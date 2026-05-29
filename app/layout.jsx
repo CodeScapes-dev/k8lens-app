@@ -1,4 +1,5 @@
 import { Inter, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,7 +23,10 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster richColors bottom right />
+      </body>
     </html>
   );
 }
