@@ -117,7 +117,7 @@ export const useClusterStore = create(
       switchCluster: (contextName) => set({ activeContext: contextName }),
     }),
     {
-      name: "kulens-clusters",
+      name: "K8Lens-clusters",
       skipHydration: true,
       storage: createJSONStorage(() => localStorage),
     }
