@@ -7,8 +7,8 @@ export function ConnectionPreviewPanel({ status, probeData, activeStep }) {
 
   return (
     <div
-      className="relative hidden flex-col overflow-hidden p-10 text-background lg:flex lg:p-14"
-      style={{ background: "var(--foreground)" }}
+      className="relative hidden flex-col overflow-hidden p-10 lg:flex lg:p-14"
+      style={{ background: "#0d0e11", color: "#f4f4f5" }}
     >
       <div
         className="pointer-events-none absolute inset-0"

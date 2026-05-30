@@ -195,7 +195,7 @@ export function AppShell({ children }) {
 
   if (!hasHydrated) return null;
 
-  if (clusters.length === 0) return <>{children}</>;
+  if (clusters.length === 0 || pathname === "/connect") return <>{children}</>;
 
   const handleExportCSV = () => {
     window.dispatchEvent(new CustomEvent("kl:export-csv"));
