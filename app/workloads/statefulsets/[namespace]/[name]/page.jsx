@@ -5,16 +5,17 @@ import { useParams } from "next/navigation";
 import { LayoutDashboardIcon, CpuIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
-import { Panel } from "@/components/kl/Panel";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
 import { SharedMetadataTab } from "@/components/shared-detail-tabs/SharedMetadataTab";
 import { BlastRadiusContent } from "@/components/blast-radius/BlastRadiusContent";
 import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
-import { CostCard } from "@/components/cost-estimation/CostCard";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OverviewTab } from "@/components/statefulset-detail/tabs/OverviewTab";
+import { ResourcesTab } from "@/components/statefulset-detail/tabs/ResourcesTab";
+import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
@@ -24,21 +25,6 @@ const TABS = [
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
-
-function statusColor(desired, ready) {
-  if (desired === 0 || ready === desired) return "bg-green-500";
-  if (ready === 0) return "bg-destructive";
-  return "bg-yellow-500";
-}
-
-function QuickStat({ label, value }) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3">
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground leading-none">{label}</span>
-      <span className="font-mono text-sm font-bold leading-none">{value}</span>
-    </div>
-  );
-}
 
 export default function StatefulSetDetailPage() {
   const { namespace, name } = useParams();
@@ -77,7 +63,7 @@ export default function StatefulSetDetailPage() {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
-                  {ss && <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${statusColor(desired, ready)}`} />}
+                  {ss && <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${replicaStatusColor(desired, ready)}`} />}
                   <span className="font-mono text-xs text-muted-foreground">StatefulSet · apps/v1 · {namespace}</span>
                   {ss && <HealthBadge resourceType="statefulset" data={data} />}
                 </div>
@@ -116,35 +102,8 @@ export default function StatefulSetDetailPage() {
       {ss && <Recommendations resourceType="statefulset" data={data} namespace={namespace} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview" && (
-          <div className="flex flex-col gap-4">
-            <CostCard containers={containers} replicas={desired} />
-            <Panel title="Status">
-              <div className="grid gap-y-2 gap-x-3" style={{ gridTemplateColumns: "minmax(120px, 160px) 1fr", fontSize: 12 }}>
-                <span style={{ color: "var(--kl-text-muted)" }}>Ready Replicas</span><span className="kl-mono">{ss?.status?.readyReplicas ?? 0}</span>
-                <span style={{ color: "var(--kl-text-muted)" }}>Current Replicas</span><span className="kl-mono">{ss?.status?.currentReplicas ?? 0}</span>
-                <span style={{ color: "var(--kl-text-muted)" }}>Updated Replicas</span><span className="kl-mono">{ss?.status?.updatedReplicas ?? 0}</span>
-                <span style={{ color: "var(--kl-text-muted)" }}>Service Name</span><span className="kl-mono">{ss?.spec?.serviceName ?? "—"}</span>
-              </div>
-            </Panel>
-          </div>
-        )}
-        {activeTab === "Resources" && (
-          <Panel title="Containers">
-            <div className="flex flex-col gap-3">
-              {containers.map((c) => (
-                <div key={c.name} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--kl-border)", background: "var(--kl-surface-2)" }}>
-                  <div className="kl-mono font-semibold mb-1.5">{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--kl-text-muted)" }}>{c.image}</div>
-                  <div className="flex flex-wrap gap-3 mt-2" style={{ fontSize: 11 }}>
-                    <span>CPU: {c.resources?.requests?.cpu ?? "—"} / {c.resources?.limits?.cpu ?? "—"}</span>
-                    <span>Mem: {c.resources?.requests?.memory ?? "—"} / {c.resources?.limits?.memory ?? "—"}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        )}
+        {activeTab === "Overview" && <OverviewTab sts={ss} pods={pods} events={events} />}
+        {activeTab === "Resources" && <ResourcesTab containers={containers} />}
         {activeTab === "Blast Radius" && <BlastRadiusContent resourceType="statefulset" resource={{ ...ss, pods }} namespace={namespace} />}
         {activeTab === "Dependencies" && <DependencyGraph resourceType="statefulset" resource={ss} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
