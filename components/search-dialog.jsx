@@ -30,7 +30,7 @@ export function SearchDialog({ open, onOpenChange }) {
               <CommandPrimitive.Input
                 autoFocus
                 placeholder="Search pods, deployments, services…"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
             </div>
 
@@ -49,7 +49,7 @@ export function SearchDialog({ open, onOpenChange }) {
                       key={item.href}
                       value={`${section.label} ${item.label}`}
                       onSelect={() => handleSelect(item.href)}
-                      className="flex items-center gap-2.5 rounded-md mx-1 px-3 py-2 text-sm cursor-default select-none outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                      className="flex items-center gap-2.5 rounded-md mx-1 px-3 py-2 text-sm text-foreground cursor-default select-none outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                     >
                       <ArrowRightIcon className="size-3.5 shrink-0 text-muted-foreground" />
                       {item.label}

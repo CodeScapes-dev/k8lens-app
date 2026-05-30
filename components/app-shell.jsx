@@ -213,7 +213,7 @@ export function AppShell({ children }) {
         <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2 shrink-0 h-[52px] rounded-t-xl" style={{ position: "relative" }}>
           <Tooltip delayDuration={400}>
             <TooltipTrigger asChild>
-              <SidebarTrigger />
+              <SidebarTrigger className="text-foreground" />
             </TooltipTrigger>
             <TooltipContent className="text-xs">Toggle sidebar</TooltipContent>
           </Tooltip>
@@ -234,7 +234,7 @@ export function AppShell({ children }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="size-8 p-0 shrink-0"
+                className="size-8 p-0 shrink-0 text-foreground"
                 onClick={handleExportCSV}
               >
                 <DownloadIcon className="size-4" />
@@ -250,7 +250,7 @@ export function AppShell({ children }) {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "shrink-0 gap-1.5 px-2 h-8 text-xs",
+                  "shrink-0 gap-1.5 px-2 h-8 text-xs text-foreground",
                   autoRefresh > 0 && "text-foreground"
                 )}
                 onClick={() => openSettings("general")}
@@ -292,7 +292,7 @@ export function AppShell({ children }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="size-8 p-0 shrink-0"
+                className="size-8 p-0 shrink-0 text-foreground"
                 onClick={() => openSettings("general")}
               >
                 <Settings2Icon className="size-4" />
