@@ -56,7 +56,10 @@ export const useClusterStore = create(
           return { activeContext: info.contextName, clusters: [...state.clusters, info] };
         }),
 
-      clearClusters: () => set({ activeContext: null, clusters: [] }),
+      clearClusters: () => {
+        localStorage.clear();
+        set({ activeContext: null, clusters: [], preferences: DEFAULT_PREFERENCES });
+      },
 
       connectViaAutoDetect: async () => {
         const response = await fetch("/api/cluster/auto-detect", { method: "POST" });
@@ -107,10 +110,14 @@ export const useClusterStore = create(
       },
 
       removeCluster: (contextName) =>
-        set((state) => ({
-          activeContext: state.activeContext === contextName ? null : state.activeContext,
-          clusters: state.clusters.filter((cluster) => cluster.contextName !== contextName),
-        })),
+        set((state) => {
+          const remaining = state.clusters.filter((c) => c.contextName !== contextName);
+          if (remaining.length === 0) localStorage.clear();
+          return {
+            activeContext: state.activeContext === contextName ? (remaining[0]?.contextName ?? null) : state.activeContext,
+            clusters: remaining,
+          };
+        }),
 
       setPreference: (patch) => set((state) => ({ preferences: { ...state.preferences, ...patch } })),
 

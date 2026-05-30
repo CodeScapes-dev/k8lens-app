@@ -9,7 +9,7 @@ const DEFAULT_CONFIG = { enabled: true, cpuPerCoreHour: 0.048, memPerGbHour: 0.0
 
 function loadConfig() {
   try {
-    const raw = localStorage.getItem("kulens-cost-config");
+    const raw = localStorage.getItem("K8Lens-cost-config");
     if (!raw) return DEFAULT_CONFIG;
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch { return DEFAULT_CONFIG; }
