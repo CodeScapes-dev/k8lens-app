@@ -1,13 +1,9 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { Direction } from "radix-ui"
+import * as React from 'react';
+import { Direction } from 'radix-ui';
 
-function DirectionProvider({
-  dir,
-  direction,
-  children
-}) {
+function DirectionProvider({ dir, direction, children }) {
   return (
     <Direction.DirectionProvider dir={direction ?? dir}>
       {children}
@@ -15,6 +11,6 @@ function DirectionProvider({
   );
 }
 
-const useDirection = Direction.useDirection
+const useDirection = Direction.useDirection;
 
-export { DirectionProvider, useDirection }
+export { DirectionProvider, useDirection };
