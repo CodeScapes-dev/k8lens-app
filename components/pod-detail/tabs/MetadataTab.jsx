@@ -7,7 +7,10 @@ export function MetadataTab({ pod }) {
   if (!pod) return null;
   const meta = pod.metadata ?? {};
   const labels = meta.labels ?? {};
-  const annotations = meta.annotations ?? {};
+  const rawAnnotations = meta.annotations ?? {};
+  const annotations = Object.fromEntries(
+    Object.entries(rawAnnotations).filter(([k]) => k !== "kubectl.kubernetes.io/last-applied-configuration")
+  );
   const finalizers = meta.finalizers ?? [];
 
   return (

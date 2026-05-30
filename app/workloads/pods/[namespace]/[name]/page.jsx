@@ -18,6 +18,7 @@ import { LogsTab } from "@/components/pod-detail/tabs/LogsTab";
 import { EventsTab } from "@/components/pod-detail/tabs/EventsTab";
 import { MetadataTab } from "@/components/pod-detail/tabs/MetadataTab";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
+import { QuickStat } from "@/components/detail/helpers";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
@@ -49,15 +50,6 @@ function totalMem(pod) {
   if (gi >= 0.1) return `${gi.toFixed(2)}Gi`;
   const mi = bytes / 1024 ** 2;
   return `${Math.round(mi)}Mi`;
-}
-
-function QuickStat({ label, value }) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3">
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground leading-none">{label}</span>
-      <span className="font-mono text-sm font-bold leading-none">{value}</span>
-    </div>
-  );
 }
 
 export default function PodDetailPage() {

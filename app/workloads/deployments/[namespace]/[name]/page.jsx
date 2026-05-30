@@ -13,6 +13,7 @@ import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QuickStat } from "@/components/detail/helpers";
 import { OverviewTab }       from "@/components/deployment-detail/tabs/OverviewTab";
 import { ResourcesTab }      from "@/components/deployment-detail/tabs/ResourcesTab";
 import { RolloutHistoryTab } from "@/components/deployment-detail/tabs/RolloutHistoryTab";
@@ -39,14 +40,7 @@ function statusColor(dep) {
   return "bg-yellow-500";
 }
 
-function QuickStat({ label, value }) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3">
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground leading-none">{label}</span>
-      <span className="font-mono text-sm font-bold leading-none">{value}</span>
-    </div>
-  );
-}
+
 
 export default function DeploymentDetailPage() {
   const { namespace, name } = useParams();
