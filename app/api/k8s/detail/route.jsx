@@ -572,7 +572,7 @@ const handlers = {
 
   crd: async (clients, { name }) => {
     const [crdRes, eventsRes] = await Promise.allSettled([
-      clients.apiextensions.readCustomResourceDefinition({ name }),
+      clients.extensions.readCustomResourceDefinition({ name }),
       clients.events.listEventForAllNamespaces(),
     ]);
     const crd = crdRes?.status === "fulfilled" ? extractBody(crdRes.value) : null;
