@@ -17,10 +17,10 @@ export async function GET(request) {
     const params = parseListParams(request);
     let result;
     if (name) {
-      const res = await clients.apiextensions.readCustomResourceDefinition({ name });
+      const res = await clients.extensions.readCustomResourceDefinition({ name });
       result = { item: extractBody(res) };
     } else {
-      const res = await clients.apiextensions.listCustomResourceDefinition();
+      const res = await clients.extensions.listCustomResourceDefinition();
       result = applyListPipeline(extractItems(res), params);
     }
     return NextResponse.json(serializeK8sObjects(result));
