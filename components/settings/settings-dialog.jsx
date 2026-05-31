@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -51,8 +51,8 @@ const TAB_CONTENT = {
 };
 
 export function SettingsDialog({ open, onOpenChange, initialTab = "general" }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = React.useState(initialTab);
+  const [search, setSearch] = React.useState("");
 
   const handleOpenChange = (val) => {
     if (val) {
@@ -62,7 +62,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab = "general" }) {
     onOpenChange(val);
   };
 
-  const filteredGroups = useMemo(() => {
+  const filteredGroups = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return GROUPS;
     return GROUPS.map((g) => ({

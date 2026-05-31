@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import { useClusterStore } from "@/stores/clusterStore";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -8,7 +8,7 @@ import { APP_VERSION } from "@/lib/data";
 
 export function AboutTab() {
   const { clusters, clearClusters } = useClusterStore();
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = React.useState(false);
 
   const handleClearAll = () => {
     if (!confirming) {

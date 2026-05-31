@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import { useClusterStore } from "@/stores/clusterStore";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +19,7 @@ import { ServerIcon, ChevronDownIcon, CheckIcon, LayersIcon } from "lucide-react
 import { cn } from "@/lib/utils";
 
 function NamespaceMultiSelect({ namespaces, selected, onChange }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
   const selectedSet = new Set(selected);
 
   const toggle = (ns) => {

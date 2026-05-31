@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronRightIcon, LoaderCircleIcon } from "lucide-react";
@@ -21,25 +21,25 @@ export function ConnectPage() {
   const { connectViaAutoDetect, connectViaToken, connectViaUpload } =
     useClusterStore();
 
-  useEffect(() => {
+  React.useEffect(() => {
     useClusterStore.persist.rehydrate();
   }, []);
 
-  const [method, setMethod] = useState("kubeconfig");
-  const [status, setStatus] = useState("idle");
-  const [activeStep, setActiveStep] = useState(-1);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [probeData, setProbeData] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [apiEndpoint, setApiEndpoint] = useState("");
-  const [token, setToken] = useState("");
-  const [caData, setCaData] = useState("");
-  const [skipTls, setSkipTls] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({});
-  const fileInputRef = useRef(null);
+  const [method, setMethod] = React.useState("kubeconfig");
+  const [status, setStatus] = React.useState("idle");
+  const [activeStep, setActiveStep] = React.useState(-1);
+  const [errorMessage, setErrorMessage] = React.useState("");
+  const [probeData, setProbeData] = React.useState(null);
+  const [selectedFile, setSelectedFile] = React.useState(null);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [apiEndpoint, setApiEndpoint] = React.useState("");
+  const [token, setToken] = React.useState("");
+  const [caData, setCaData] = React.useState("");
+  const [skipTls, setSkipTls] = React.useState(false);
+  const [fieldErrors, setFieldErrors] = React.useState({});
+  const fileInputRef = React.useRef(null);
 
-  const handleFileSelect = useCallback((file) => {
+  const handleFileSelect = React.useCallback((file) => {
     if (!file) return;
     if (file.size > 256 * 1024) {
       setFieldErrors({ file: "File too large (max 256 KB)." });
@@ -49,7 +49,7 @@ export function ConnectPage() {
     setFieldErrors({});
   }, []);
 
-  const handleDrop = useCallback(
+  const handleDrop = React.useCallback(
     (event) => {
       event.preventDefault();
       setDragOver(false);
@@ -58,7 +58,7 @@ export function ConnectPage() {
     [handleFileSelect],
   );
 
-  const runWithSteps = useCallback(
+  const runWithSteps = React.useCallback(
     async (actionFn) => {
       setStatus("connecting");
       setErrorMessage("");

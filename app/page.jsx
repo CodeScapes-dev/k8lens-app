@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import React from "react";
 import { useRouter } from 'next/navigation';
 import { useClusterStore } from '@/stores/clusterStore';
 
 export default function RootPage() {
   const router = useRouter();
 
-  useEffect(() => {
+  React.useEffect(() => {
     useClusterStore.persist.rehydrate();
     const { clusters, activeContext } = useClusterStore.getState();
     const hasActive =

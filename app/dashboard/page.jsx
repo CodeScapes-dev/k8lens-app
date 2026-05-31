@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -283,11 +283,11 @@ export default function DashboardPage() {
 /* ─── Dashboard Content ───────────────────────────────────────────────────── */
 
 function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
-  const [eventFilter, setEventFilter] = useState('All');
-  const [syncedAt] = useState(Date.now());
-  const [costEnabled, setCostEnabled] = useState(true);
+  const [eventFilter, setEventFilter] = React.useState('All');
+  const [syncedAt] = React.useState(Date.now());
+  const [costEnabled, setCostEnabled] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     try {
       const raw = localStorage.getItem('K8Lens-cost-config');
       if (raw) setCostEnabled(JSON.parse(raw).enabled !== false);
@@ -327,7 +327,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
   const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
 
-  const hourlyData = useMemo(() => {
+  const hourlyData = React.useMemo(() => {
     const now = Date.now();
     const buckets = Array.from({ length: 24 }, () => ({ n: 0, w: 0, e: 0 }));
     (data.events || []).forEach((ev) => {
@@ -373,7 +373,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
     { l: 'Disk', used: '—', pct: 0, data: diskSpark, color: 'var(--kl-info)' },
   ];
 
-  const timelineEvents = useMemo(() => {
+  const timelineEvents = React.useMemo(() => {
     return (data.events || [])
       .filter((e) => {
         if (eventFilter === 'Warnings') return e?.type === 'Warning';

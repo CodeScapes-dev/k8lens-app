@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   HomeIcon,
@@ -125,17 +125,17 @@ function autoRefreshLabel(seconds) {
 export function AppShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [hasHydrated, setHasHydrated] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("general");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const [progressKey, setProgressKey] = useState(0);
+  const [hasHydrated, setHasHydrated] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [settingsTab, setSettingsTab] = React.useState("general");
+  const [searchOpen, setSearchOpen] = React.useState(false);
+  const [countdown, setCountdown] = React.useState(0);
+  const [progressKey, setProgressKey] = React.useState(0);
 
   const { clusters, preferences } = useClusterStore();
   const autoRefresh = preferences?.autoRefresh ?? 0;
 
-  useEffect(() => {
+  React.useEffect(() => {
     useClusterStore.persist.rehydrate();
     setHasHydrated(true);
   }, []);
@@ -145,7 +145,7 @@ export function AppShell({ children }) {
     setSettingsOpen(true);
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     const crumbs = getBreadcrumbs(pathname);
     if (!crumbs) {
       document.title = "KuLens — Kubernetes Dashboard";
@@ -156,7 +156,7 @@ export function AppShell({ children }) {
     }
   }, [pathname]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -167,13 +167,13 @@ export function AppShell({ children }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handler = (e) => openSettings(e.detail?.tab ?? "general");
     window.addEventListener("kl:open-settings", handler);
     return () => window.removeEventListener("kl:open-settings", handler);
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!hasHydrated) return;
     if (clusters.length === 0 && pathname !== "/connect") {
       router.replace("/connect");
@@ -181,7 +181,7 @@ export function AppShell({ children }) {
   }, [hasHydrated, clusters.length, pathname, router]);
 
   // Countdown timer that stays in sync with auto-refresh
-  useEffect(() => {
+  React.useEffect(() => {
     if (!autoRefresh) {
       setCountdown(0);
       return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import {
   ChevronRightIcon,
   HelpCircleIcon,
@@ -192,7 +192,7 @@ function ClusterPicker({ onAddCluster }) {
 export function NavDrawer({ onAddCluster, onOpenSettings }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [openSection, setOpenSection] = useState("Workloads");
+  const [openSection, setOpenSection] = React.useState("Workloads");
   const { preferences } = useClusterStore();
   const hiddenSections = new Set(preferences?.hiddenSections ?? []);
   const visibleNav = navigation.filter((s) => !hiddenSections.has(s.label));

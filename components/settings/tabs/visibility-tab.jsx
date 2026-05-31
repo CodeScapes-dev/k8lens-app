@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import { useClusterStore } from "@/stores/clusterStore";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -16,7 +16,7 @@ export function VisibilityTab() {
   const { preferences, setPreference } = useClusterStore();
   const hiddenSections = new Set(preferences.hiddenSections ?? []);
   const hiddenResources = preferences.hiddenResources ?? {};
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = React.useState({});
 
   const toggleSection = (label) => {
     const next = new Set(hiddenSections);
