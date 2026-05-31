@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { Panel } from "@/components/kl/Panel";
@@ -14,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -94,6 +96,7 @@ export default function IngressClassDetailPage() {
             </div>
           </Panel>
         )}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="ingressclass" resource={ic} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={ic} />}
       </div>

@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, ShieldIcon, BellIcon, TagIcon, ServerIcon } from "lucide-react";
+import { LayoutDashboardIcon, ShieldIcon, BellIcon, TagIcon, ServerIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
@@ -17,6 +18,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Permissions", icon: ShieldIcon },
   { id: "Pods", icon: ServerIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -278,6 +280,7 @@ export default function ServiceAccountDetailPage() {
             )}
           </Panel>
         )}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="serviceaccount" resource={sa} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={sa} />}
       </div>

@@ -270,6 +270,14 @@ function buildGraph(resourceType, resource, allData) {
     }
 
     case "pod": {
+      // ownerRef chain
+      (meta.ownerReferences ?? []).forEach((o) => {
+        const ownerKinds = ["ReplicaSet","Deployment","StatefulSet","DaemonSet","Job","CronJob","ReplicationController"];
+        if (ownerKinds.includes(o.kind)) {
+          const id = addNode(o.kind, o.name, ns, "owned by");
+          addEdge(id, rootId, "owned by", KIND_COLOR[o.kind] ?? "#94a3b8");
+        }
+      });
       (spec.volumes ?? []).forEach((v) => {
         if (v.configMap?.name) {
           const id = addNode("ConfigMap", v.configMap.name, ns, "mounts");
@@ -284,9 +292,438 @@ function buildGraph(resourceType, resource, allData) {
           addEdge(id, rootId, "mounts", KIND_COLOR.PersistentVolumeClaim);
         }
       });
+      // env.valueFrom references
+      const allContainers = [...(spec.initContainers ?? []), ...(spec.containers ?? [])];
+      const seenEnv = new Set();
+      allContainers.forEach((c) => {
+        (c.envFrom ?? []).forEach((e) => {
+          if (e.configMapRef?.name && !seenEnv.has("cm:" + e.configMapRef.name)) {
+            seenEnv.add("cm:" + e.configMapRef.name);
+            const id = addNode("ConfigMap", e.configMapRef.name, ns, "envFrom");
+            addEdge(id, rootId, "envFrom", KIND_COLOR.ConfigMap);
+          }
+          if (e.secretRef?.name && !seenEnv.has("sec:" + e.secretRef.name)) {
+            seenEnv.add("sec:" + e.secretRef.name);
+            const id = addNode("Secret", e.secretRef.name, ns, "envFrom");
+            addEdge(id, rootId, "envFrom", KIND_COLOR.Secret);
+          }
+        });
+        (c.env ?? []).forEach((e) => {
+          if (e.valueFrom?.configMapKeyRef?.name && !seenEnv.has("cm:" + e.valueFrom.configMapKeyRef.name)) {
+            seenEnv.add("cm:" + e.valueFrom.configMapKeyRef.name);
+            const id = addNode("ConfigMap", e.valueFrom.configMapKeyRef.name, ns, "env ref");
+            addEdge(id, rootId, "env ref", KIND_COLOR.ConfigMap);
+          }
+          if (e.valueFrom?.secretKeyRef?.name && !seenEnv.has("sec:" + e.valueFrom.secretKeyRef.name)) {
+            seenEnv.add("sec:" + e.valueFrom.secretKeyRef.name);
+            const id = addNode("Secret", e.valueFrom.secretKeyRef.name, ns, "env ref");
+            addEdge(id, rootId, "env ref", KIND_COLOR.Secret);
+          }
+        });
+      });
       if (spec.serviceAccountName) {
-        const id = addNode("ServiceAccount", spec.serviceAccountName, ns, "uses");
-        addEdge(id, rootId, "uses", KIND_COLOR.ServiceAccount ?? "#f97316");
+        const id = addNode("ServiceAccount", spec.serviceAccountName, ns, "runs as");
+        addEdge(id, rootId, "runs as", KIND_COLOR.ServiceAccount ?? "#f97316");
+      }
+      if (spec.nodeName) {
+        const id = addNode("Node", spec.nodeName, null, "scheduled on");
+        addEdge(id, rootId, "scheduled on", KIND_COLOR.Node);
+      }
+      // downstream: services selecting this pod
+      const podLabels = meta.labels ?? {};
+      (allData.services ?? []).forEach((svc) => {
+        const sel = svc?.spec?.selector ?? {};
+        if (Object.keys(sel).length > 0 && Object.entries(sel).every(([k, v]) => podLabels[k] === v)) {
+          const id = addNode("Service", svc?.metadata?.name, svc?.metadata?.namespace ?? ns, null);
+          addEdge(rootId, id, "selected by", KIND_COLOR.Service);
+        }
+      });
+      break;
+    }
+
+    case "replicaset": {
+      // upstream: owning Deployment
+      (meta.ownerReferences ?? []).forEach((o) => {
+        if (o.kind === "Deployment") {
+          const id = addNode("Deployment", o.name, ns, "owned by");
+          addEdge(id, rootId, "owned by", KIND_COLOR.Deployment);
+        }
+      });
+      const tSpec2 = spec.template?.spec ?? {};
+      if (tSpec2.serviceAccountName && tSpec2.serviceAccountName !== "default") {
+        const id = addNode("ServiceAccount", tSpec2.serviceAccountName, ns, "runs as");
+        addEdge(id, rootId, "runs as", KIND_COLOR.ServiceAccount);
+      }
+      (tSpec2.volumes ?? []).forEach((v) => {
+        if (v.configMap?.name) { const id = addNode("ConfigMap", v.configMap.name, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.ConfigMap); }
+        if (v.secret?.secretName) { const id = addNode("Secret", v.secret.secretName, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.Secret); }
+      });
+      // downstream: pods
+      (allData.pods ?? []).forEach((pod) => {
+        if ((pod?.metadata?.ownerReferences ?? []).some((o) => o.kind === "ReplicaSet" && o.name === rname)) {
+          const id = addNode("Pod", pod?.metadata?.name, ns, null);
+          addEdge(rootId, id, "owns", KIND_COLOR.Pod);
+        }
+      });
+      break;
+    }
+
+    case "replicationcontroller": {
+      const tSpec3 = spec.template?.spec ?? {};
+      const tMeta3 = spec.template?.metadata ?? {};
+      const podLabels3 = tMeta3.labels ?? {};
+      if (tSpec3.serviceAccountName && tSpec3.serviceAccountName !== "default") {
+        const id = addNode("ServiceAccount", tSpec3.serviceAccountName, ns, "runs as");
+        addEdge(id, rootId, "runs as", KIND_COLOR.ServiceAccount);
+      }
+      (tSpec3.volumes ?? []).forEach((v) => {
+        if (v.configMap?.name) { const id = addNode("ConfigMap", v.configMap.name, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.ConfigMap); }
+        if (v.secret?.secretName) { const id = addNode("Secret", v.secret.secretName, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.Secret); }
+      });
+      (allData.pods ?? []).forEach((pod) => {
+        if ((pod?.metadata?.ownerReferences ?? []).some((o) => o.kind === "ReplicationController" && o.name === rname)) {
+          const id = addNode("Pod", pod?.metadata?.name, ns, null);
+          addEdge(rootId, id, "owns", KIND_COLOR.Pod);
+        }
+      });
+      (allData.services ?? []).forEach((svc) => {
+        const sel = svc?.spec?.selector ?? {};
+        if (Object.keys(sel).length > 0 && Object.entries(sel).every(([k, v]) => podLabels3[k] === v)) {
+          const id = addNode("Service", svc?.metadata?.name, svc?.metadata?.namespace ?? ns, null);
+          addEdge(rootId, id, "exposes", KIND_COLOR.Service);
+        }
+      });
+      break;
+    }
+
+    case "job": {
+      (meta.ownerReferences ?? []).forEach((o) => {
+        if (o.kind === "CronJob") {
+          const id = addNode("CronJob", o.name, ns, "owned by");
+          addEdge(id, rootId, "owned by", KIND_COLOR.CronJob);
+        }
+      });
+      const jobTSpec = spec.template?.spec ?? {};
+      if (jobTSpec.serviceAccountName && jobTSpec.serviceAccountName !== "default") {
+        const id = addNode("ServiceAccount", jobTSpec.serviceAccountName, ns, "runs as");
+        addEdge(id, rootId, "runs as", KIND_COLOR.ServiceAccount);
+      }
+      (jobTSpec.volumes ?? []).forEach((v) => {
+        if (v.configMap?.name) { const id = addNode("ConfigMap", v.configMap.name, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.ConfigMap); }
+        if (v.secret?.secretName) { const id = addNode("Secret", v.secret.secretName, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.Secret); }
+      });
+      (allData.pods ?? []).forEach((pod) => {
+        if ((pod?.metadata?.ownerReferences ?? []).some((o) => o.kind === "Job" && o.name === rname)) {
+          const id = addNode("Pod", pod?.metadata?.name, ns, null);
+          addEdge(rootId, id, "owns", KIND_COLOR.Pod);
+        }
+      });
+      break;
+    }
+
+    case "cronjob": {
+      const cjTSpec = spec.jobTemplate?.spec?.template?.spec ?? {};
+      if (cjTSpec.serviceAccountName && cjTSpec.serviceAccountName !== "default") {
+        const id = addNode("ServiceAccount", cjTSpec.serviceAccountName, ns, "runs as");
+        addEdge(id, rootId, "runs as", KIND_COLOR.ServiceAccount);
+      }
+      (cjTSpec.volumes ?? []).forEach((v) => {
+        if (v.configMap?.name) { const id = addNode("ConfigMap", v.configMap.name, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.ConfigMap); }
+        if (v.secret?.secretName) { const id = addNode("Secret", v.secret.secretName, ns, "mounts"); addEdge(id, rootId, "mounts", KIND_COLOR.Secret); }
+      });
+      (allData.jobs ?? []).forEach((job) => {
+        if ((job?.metadata?.ownerReferences ?? []).some((o) => o.kind === "CronJob" && o.name === rname)) {
+          const jobId = addNode("Job", job?.metadata?.name, ns, null);
+          addEdge(rootId, jobId, "spawns", KIND_COLOR.Job);
+          (allData.pods ?? []).forEach((pod) => {
+            if ((pod?.metadata?.ownerReferences ?? []).some((o) => o.kind === "Job" && o.name === job?.metadata?.name)) {
+              const podId = addNode("Pod", pod?.metadata?.name, ns, null);
+              addEdge(jobId, podId, "owns", KIND_COLOR.Pod);
+            }
+          });
+        }
+      });
+      break;
+    }
+
+    case "configmap": {
+      // downstream: pods, deployments, statefulsets, daemonsets, jobs that reference this configmap
+      const cmName = rname;
+      const refsConfigMap = (tSpec) => {
+        const vols = (tSpec.volumes ?? []).some((v) => v.configMap?.name === cmName);
+        const envs = [...(tSpec.initContainers ?? []), ...(tSpec.containers ?? [])].some((c) =>
+          (c.envFrom ?? []).some((e) => e.configMapRef?.name === cmName) ||
+          (c.env ?? []).some((e) => e.valueFrom?.configMapKeyRef?.name === cmName)
+        );
+        return vols || envs;
+      };
+      (allData.pods ?? []).forEach((pod) => {
+        if (refsConfigMap(pod?.spec ?? {})) {
+          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "mounts");
+          addEdge(rootId, id, "mounted by", KIND_COLOR.Pod);
+        }
+      });
+      const workloads = [
+        ...(allData.replicasets ?? []).map((r) => ({ kind: "ReplicaSet", r, tSpec: r?.spec?.template?.spec })),
+        ...(allData.jobs ?? []).map((r) => ({ kind: "Job", r, tSpec: r?.spec?.template?.spec })),
+      ];
+      workloads.forEach(({ kind, r, tSpec }) => {
+        if (tSpec && refsConfigMap(tSpec)) {
+          const id = addNode(kind, r?.metadata?.name, r?.metadata?.namespace ?? ns, "references");
+          addEdge(rootId, id, "referenced by", KIND_COLOR[kind]);
+        }
+      });
+      break;
+    }
+
+    case "secret": {
+      const secName = rname;
+      const refsSecret = (tSpec) => {
+        const vols = (tSpec.volumes ?? []).some((v) => v.secret?.secretName === secName);
+        const envs = [...(tSpec.initContainers ?? []), ...(tSpec.containers ?? [])].some((c) =>
+          (c.envFrom ?? []).some((e) => e.secretRef?.name === secName) ||
+          (c.env ?? []).some((e) => e.valueFrom?.secretKeyRef?.name === secName)
+        );
+        return vols || envs;
+      };
+      (allData.pods ?? []).forEach((pod) => {
+        if (refsSecret(pod?.spec ?? {})) {
+          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "mounts");
+          addEdge(rootId, id, "mounted by", KIND_COLOR.Pod);
+        }
+      });
+      const wls = [
+        ...(allData.replicasets ?? []).map((r) => ({ kind: "ReplicaSet", r, tSpec: r?.spec?.template?.spec })),
+        ...(allData.jobs ?? []).map((r) => ({ kind: "Job", r, tSpec: r?.spec?.template?.spec })),
+      ];
+      wls.forEach(({ kind, r, tSpec }) => {
+        if (tSpec && refsSecret(tSpec)) {
+          const id = addNode(kind, r?.metadata?.name, r?.metadata?.namespace ?? ns, "references");
+          addEdge(rootId, id, "referenced by", KIND_COLOR[kind]);
+        }
+      });
+      (allData.ingresses ?? []).forEach((ing) => {
+        if ((ing?.spec?.tls ?? []).some((t) => t.secretName === secName)) {
+          const id = addNode("Ingress", ing?.metadata?.name, ing?.metadata?.namespace ?? ns, "TLS cert");
+          addEdge(rootId, id, "TLS cert for", KIND_COLOR.Ingress);
+        }
+      });
+      break;
+    }
+
+    case "resourcequota":
+    case "limitrange": {
+      const nsNode = addNode("Namespace", ns, null, "applies to");
+      addEdge(nsNode, rootId, "limits", KIND_COLOR.Namespace);
+      break;
+    }
+
+    case "networkpolicy": {
+      const nsNode2 = addNode("Namespace", ns, null, "applies in");
+      addEdge(nsNode2, rootId, "governs", KIND_COLOR.Namespace);
+      const podSelector = spec.podSelector?.matchLabels ?? {};
+      if (Object.keys(podSelector).length > 0) {
+        (allData.pods ?? []).forEach((pod) => {
+          const l = pod?.metadata?.labels ?? {};
+          if (Object.entries(podSelector).every(([k, v]) => l[k] === v)) {
+            const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "governed");
+            addEdge(id, rootId, "governs", KIND_COLOR.Pod);
+          }
+        });
+      }
+      break;
+    }
+
+    case "endpoints": {
+      // upstream: the service with the same name
+      const matchSvc = (allData.services ?? []).find((s) => s?.metadata?.name === rname && s?.metadata?.namespace === ns);
+      if (matchSvc) {
+        const id = addNode("Service", matchSvc.metadata.name, ns, "created for");
+        addEdge(id, rootId, "created for", KIND_COLOR.Service);
+      }
+      // pods referenced in subsets
+      (spec.subsets ?? []).forEach((sub) => {
+        (sub.addresses ?? []).forEach((addr) => {
+          const ref = addr.targetRef;
+          if (ref?.kind === "Pod" && ref?.name) {
+            const id = addNode("Pod", ref.name, ref.namespace ?? ns, "points to");
+            addEdge(rootId, id, "points to", KIND_COLOR.Pod);
+          }
+        });
+      });
+      break;
+    }
+
+    case "ingressclass": {
+      (allData.ingresses ?? []).forEach((ing) => {
+        const cls = ing?.spec?.ingressClassName ?? ing?.metadata?.annotations?.["kubernetes.io/ingress.class"];
+        if (cls === rname) {
+          const id = addNode("Ingress", ing?.metadata?.name, ing?.metadata?.namespace ?? ns, "uses class");
+          addEdge(rootId, id, "used by", KIND_COLOR.Ingress);
+        }
+      });
+      break;
+    }
+
+    case "persistentvolume": {
+      if (spec.storageClassName) {
+        const id = addNode("StorageClass", spec.storageClassName, null, "provisioned by");
+        addEdge(id, rootId, "provisioned by", KIND_COLOR.StorageClass);
+      }
+      const claimRef = spec.claimRef;
+      if (claimRef?.name) {
+        const id = addNode("PersistentVolumeClaim", claimRef.name, claimRef.namespace ?? ns, "bound to");
+        addEdge(rootId, id, "bound to", KIND_COLOR.PersistentVolumeClaim);
+      }
+      break;
+    }
+
+    case "persistentvolumeclaim": {
+      if (spec.volumeName) {
+        const id = addNode("PersistentVolume", spec.volumeName, null, "bound to");
+        addEdge(id, rootId, "bound to", KIND_COLOR.PersistentVolume);
+      }
+      if (spec.storageClassName) {
+        const id = addNode("StorageClass", spec.storageClassName, null, "requested from");
+        addEdge(id, rootId, "requested from", KIND_COLOR.StorageClass);
+      }
+      (allData.pods ?? []).forEach((pod) => {
+        if ((pod?.spec?.volumes ?? []).some((v) => v.persistentVolumeClaim?.claimName === rname)) {
+          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "mounted by");
+          addEdge(rootId, id, "mounted by", KIND_COLOR.Pod);
+        }
+      });
+      break;
+    }
+
+    case "storageclass": {
+      (allData.pvs ?? []).forEach((pv) => {
+        if (pv?.spec?.storageClassName === rname) {
+          const id = addNode("PersistentVolume", pv?.metadata?.name, null, "provisions");
+          addEdge(rootId, id, "provisions", KIND_COLOR.PersistentVolume);
+        }
+      });
+      (allData.pvcs ?? []).forEach((pvc) => {
+        if (pvc?.spec?.storageClassName === rname) {
+          const id = addNode("PersistentVolumeClaim", pvc?.metadata?.name, pvc?.metadata?.namespace ?? ns, "requested by");
+          addEdge(rootId, id, "requested by", KIND_COLOR.PersistentVolumeClaim);
+        }
+      });
+      break;
+    }
+
+    case "serviceaccount": {
+      // upstream: secrets bound to this SA
+      (resource?.secrets ?? []).forEach((s) => {
+        if (s?.name) {
+          const id = addNode("Secret", s.name, ns, "token secret");
+          addEdge(id, rootId, "token secret", KIND_COLOR.Secret);
+        }
+      });
+      // upstream: rolebindings / clusterrolebindings referencing this SA
+      [...(allData.rolebindings ?? []), ...(allData.clusterrolebindings ?? [])].forEach((rb) => {
+        const kind = rb?.kind ?? (rb?.metadata?.resourceVersion != null ? "RoleBinding" : "ClusterRoleBinding");
+        if ((rb?.subjects ?? []).some((s) => s.kind === "ServiceAccount" && s.name === rname && (s.namespace === ns || !s.namespace))) {
+          const rbKind = rb?.metadata?.namespace ? "RoleBinding" : "ClusterRoleBinding";
+          const id = addNode(rbKind, rb?.metadata?.name, rb?.metadata?.namespace ?? null, "bound by");
+          addEdge(id, rootId, "bound by", KIND_COLOR[rbKind]);
+        }
+      });
+      // downstream: pods using this SA
+      (allData.pods ?? []).forEach((pod) => {
+        if (pod?.spec?.serviceAccountName === rname) {
+          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "uses");
+          addEdge(rootId, id, "used by", KIND_COLOR.Pod);
+        }
+      });
+      break;
+    }
+
+    case "role": {
+      const nsNode3 = addNode("Namespace", ns, null, "lives in");
+      addEdge(nsNode3, rootId, "contains", KIND_COLOR.Namespace);
+      (allData.rolebindings ?? []).forEach((rb) => {
+        if (rb?.roleRef?.name === rname && rb?.roleRef?.kind === "Role") {
+          const id = addNode("RoleBinding", rb?.metadata?.name, rb?.metadata?.namespace ?? ns, "bound by");
+          addEdge(rootId, id, "bound by", KIND_COLOR.RoleBinding);
+        }
+      });
+      break;
+    }
+
+    case "rolebinding": {
+      if (spec.roleRef?.name) {
+        const kind = spec.roleRef.kind ?? "Role";
+        const id = addNode(kind, spec.roleRef.name, kind === "ClusterRole" ? null : ns, "binds");
+        addEdge(id, rootId, "binds", KIND_COLOR[kind]);
+      }
+      (spec.subjects ?? []).forEach((s) => {
+        if (s.kind === "ServiceAccount" && s.name) {
+          const id = addNode("ServiceAccount", s.name, s.namespace ?? ns, "subject");
+          addEdge(id, rootId, "subject", KIND_COLOR.ServiceAccount);
+        }
+      });
+      break;
+    }
+
+    case "clusterrole": {
+      (allData.clusterrolebindings ?? []).forEach((crb) => {
+        if (crb?.roleRef?.name === rname && crb?.roleRef?.kind === "ClusterRole") {
+          const id = addNode("ClusterRoleBinding", crb?.metadata?.name, null, "bound by");
+          addEdge(rootId, id, "bound by", KIND_COLOR.ClusterRoleBinding);
+        }
+      });
+      (allData.rolebindings ?? []).forEach((rb) => {
+        if (rb?.roleRef?.name === rname && rb?.roleRef?.kind === "ClusterRole") {
+          const id = addNode("RoleBinding", rb?.metadata?.name, rb?.metadata?.namespace ?? ns, "bound by");
+          addEdge(rootId, id, "bound by (ns)", KIND_COLOR.RoleBinding);
+        }
+      });
+      break;
+    }
+
+    case "clusterrolebinding": {
+      if (spec.roleRef?.name) {
+        const id = addNode("ClusterRole", spec.roleRef.name, null, "binds");
+        addEdge(id, rootId, "binds", KIND_COLOR.ClusterRole);
+      }
+      (spec.subjects ?? []).forEach((s) => {
+        if (s.kind === "ServiceAccount" && s.name) {
+          const id = addNode("ServiceAccount", s.name, s.namespace ?? null, "subject");
+          addEdge(id, rootId, "subject", KIND_COLOR.ServiceAccount);
+        }
+      });
+      break;
+    }
+
+    case "node": {
+      (allData.pods ?? []).forEach((pod) => {
+        if (pod?.spec?.nodeName === rname) {
+          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "hosted");
+          addEdge(rootId, id, "hosts", KIND_COLOR.Pod);
+        }
+      });
+      break;
+    }
+
+    case "namespace": {
+      // show ResourceQuotas and LimitRanges as upstream policy
+      (allData.pods ?? []).slice(0, 12).forEach((pod) => {
+        const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.Pod);
+      });
+      (allData.services ?? []).slice(0, 8).forEach((svc) => {
+        const id = addNode("Service", svc?.metadata?.name, svc?.metadata?.namespace ?? rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.Service);
+      });
+      break;
+    }
+
+    case "horizontalpodautoscaler": {
+      const ref = spec.scaleTargetRef;
+      if (ref?.name && ref?.kind) {
+        const id = addNode(ref.kind, ref.name, ns, "scales");
+        addEdge(id, rootId, "scaled by", KIND_COLOR[ref.kind] ?? "#94a3b8");
       }
       break;
     }
@@ -393,26 +830,64 @@ export function DependencyGraph({ resourceType, resource }) {
   const activeContext = useStore?.((s) => s.activeContext) ?? null;
   const namespace = resource?.metadata?.namespace;
 
-  const opts = { namespace, context: activeContext };
+  const nsOpts      = { namespace, context: activeContext };
+  const clusterOpts = { context: activeContext };
 
-  const { data: servicesData   } = useK8sResource("core",                        "services",                   opts);
-  const { data: ingressesData  } = useK8sResource("networking",                  "ingresses",                  opts);
-  const { data: podsData       } = useK8sResource("core",                        "pods",                       opts);
-  const { data: replicasetsData} = useK8sResource("apps",                        "replicasets",                opts);
-  const { data: hpasData       } = useK8sResource("autoscaling",                 "horizontalpodautoscalers",   opts);
-  const { data: configmapsData } = useK8sResource("core",                        "configmaps",                 opts);
-  const { data: secretsData    } = useK8sResource("core",                        "secrets",                    opts);
+  const { data: servicesData         } = useK8sResource("core",       "services",                 nsOpts);
+  const { data: ingressesData        } = useK8sResource("networking", "ingresses",                nsOpts);
+  const { data: podsData             } = useK8sResource("core",       "pods",                     nsOpts);
+  const { data: replicasetsData      } = useK8sResource("apps",       "replicasets",              nsOpts);
+  const { data: hpasData             } = useK8sResource("autoscaling","horizontalpodautoscalers", nsOpts);
+  const { data: configmapsData       } = useK8sResource("core",       "configmaps",               nsOpts);
+  const { data: secretsData          } = useK8sResource("core",       "secrets",                  nsOpts);
+  const { data: serviceaccountsData  } = useK8sResource("core",       "serviceaccounts",          nsOpts);
+  const { data: jobsData             } = useK8sResource("batch",      "jobs",                     nsOpts);
+  const { data: cronjobsData         } = useK8sResource("batch",      "cronjobs",                 nsOpts);
+  const { data: rcData               } = useK8sResource("core",       "replicationcontrollers",   nsOpts);
+  const { data: endpointsData        } = useK8sResource("core",       "endpoints",                nsOpts);
+  const { data: networkpoliciesData  } = useK8sResource("networking", "networkpolicies",          nsOpts);
+  const { data: pvcsData             } = useK8sResource("core",       "persistentvolumeclaims",   nsOpts);
+  const { data: rolebindingsData     } = useK8sResource("rbac",       "rolebindings",             nsOpts);
+  const { data: rolesData            } = useK8sResource("rbac",       "roles",                    nsOpts);
+  const { data: pvsData              } = useK8sResource("core",       "persistentvolumes",        clusterOpts);
+  const { data: storageclassesData   } = useK8sResource("storage",    "storageclasses",           clusterOpts);
+  const { data: nodesData            } = useK8sResource("core",       "nodes",                    clusterOpts);
+  const { data: clusterrolesData     } = useK8sResource("rbac",       "clusterroles",             clusterOpts);
+  const { data: clusterrolebindingsData } = useK8sResource("rbac",    "clusterrolebindings",      clusterOpts);
+  const { data: ingressclassesData   } = useK8sResource("networking", "ingressclasses",           clusterOpts);
 
-  // useK8sResource returns json.data directly (already the items array)
+  const norm = (d) => Array.isArray(d) ? d : (d?.data ?? d?.items ?? []);
+
   const allData = React.useMemo(() => ({
-    services:    Array.isArray(servicesData)    ? servicesData    : (servicesData?.data    ?? servicesData?.items    ?? []),
-    ingresses:   Array.isArray(ingressesData)   ? ingressesData   : (ingressesData?.data   ?? ingressesData?.items   ?? []),
-    pods:        Array.isArray(podsData)        ? podsData        : (podsData?.data        ?? podsData?.items        ?? []),
-    replicasets: Array.isArray(replicasetsData) ? replicasetsData : (replicasetsData?.data ?? replicasetsData?.items ?? []),
-    hpas:        Array.isArray(hpasData)        ? hpasData        : (hpasData?.data        ?? hpasData?.items        ?? []),
-    configmaps:  Array.isArray(configmapsData)  ? configmapsData  : (configmapsData?.data  ?? configmapsData?.items  ?? []),
-    secrets:     Array.isArray(secretsData)     ? secretsData     : (secretsData?.data     ?? secretsData?.items     ?? []),
-  }), [servicesData, ingressesData, podsData, replicasetsData, hpasData, configmapsData, secretsData]);
+    services:            norm(servicesData),
+    ingresses:           norm(ingressesData),
+    pods:                norm(podsData),
+    replicasets:         norm(replicasetsData),
+    hpas:                norm(hpasData),
+    configmaps:          norm(configmapsData),
+    secrets:             norm(secretsData),
+    serviceaccounts:     norm(serviceaccountsData),
+    jobs:                norm(jobsData),
+    cronjobs:            norm(cronjobsData),
+    replicationcontrollers: norm(rcData),
+    endpoints:           norm(endpointsData),
+    networkpolicies:     norm(networkpoliciesData),
+    pvcs:                norm(pvcsData),
+    pvs:                 norm(pvsData),
+    storageclasses:      norm(storageclassesData),
+    nodes:               norm(nodesData),
+    roles:               norm(rolesData),
+    rolebindings:        norm(rolebindingsData),
+    clusterroles:        norm(clusterrolesData),
+    clusterrolebindings: norm(clusterrolebindingsData),
+    ingressclasses:      norm(ingressclassesData),
+  }), [
+    servicesData, ingressesData, podsData, replicasetsData, hpasData,
+    configmapsData, secretsData, serviceaccountsData, jobsData, cronjobsData,
+    rcData, endpointsData, networkpoliciesData, pvcsData, pvsData,
+    storageclassesData, nodesData, rolesData, rolebindingsData,
+    clusterrolesData, clusterrolebindingsData, ingressclassesData,
+  ]);
 
   if (!resource) return null;
 

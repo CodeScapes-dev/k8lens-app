@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -16,6 +17,7 @@ import { QuickStat, replicaStatusColor } from "@/components/workload-detail/help
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Resources", icon: CpuIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -94,7 +96,7 @@ export default function ReplicationControllerDetailPage() {
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab rc={rc} pods={pods} events={events} />}
         {activeTab === "Resources" && <ResourcesTab containers={containers} pods={pods} />}
-
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="replicationcontroller" resource={rc} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={rc} />}
       </div>

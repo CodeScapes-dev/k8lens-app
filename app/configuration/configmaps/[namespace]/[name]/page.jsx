@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, FileTextIcon, GitCompareIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, FileTextIcon, GitCompareIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -18,6 +19,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Data", icon: FileTextIcon },
   { id: "Changes", icon: GitCompareIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -86,6 +88,7 @@ export default function ConfigMapDetailPage() {
         {activeTab === "Overview" && <OverviewTab configMap={cm} namespace={namespace} />}
         {activeTab === "Data" && <DataTab configMap={cm} />}
         {activeTab === "Changes" && <ChangesTab resourceType="configmap" resource={cm} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="configmap" resource={cm} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={cm} />}
       </div>

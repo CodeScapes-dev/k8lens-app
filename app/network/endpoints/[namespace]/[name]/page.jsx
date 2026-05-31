@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -13,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -72,6 +74,7 @@ export default function EndpointsDetailPage() {
       </div>
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab endpoints={ep} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="endpoints" resource={ep} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={ep} />}
       </div>

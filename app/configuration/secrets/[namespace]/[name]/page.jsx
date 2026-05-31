@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, DatabaseIcon, GitCompareIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, DatabaseIcon, GitCompareIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -20,6 +21,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Data", icon: DatabaseIcon },
   { id: "Changes", icon: GitCompareIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -97,6 +99,7 @@ export default function SecretDetailPage() {
         {activeTab === "Overview" && <OverviewTab secret={secret} namespace={namespace} />}
         {activeTab === "Data" && <DataTab secret={secret} />}
         {activeTab === "Changes" && <ChangesTab resourceType="secret" resource={secret} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="secret" resource={secret} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={secret} />}
       </div>

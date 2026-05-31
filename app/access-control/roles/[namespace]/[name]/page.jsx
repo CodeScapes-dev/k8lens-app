@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, GridIcon, UsersIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, GridIcon, UsersIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import Link from "next/link";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLBadge } from "@/components/kl/Badge";
@@ -22,6 +23,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Permissions", icon: GridIcon },
   { id: "Subjects", icon: UsersIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -170,6 +172,7 @@ export default function RoleDetailPage() {
           </div>
         )}
         {activeTab === "Subjects" && <BindingSubjectsTab bindings={bindings} subjects={subjects} resourceKind="Role" />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="role" resource={role} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={role} />}
       </div>

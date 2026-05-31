@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLStatus } from "@/components/kl/Status";
 import { KLBadge } from "@/components/kl/Badge";
@@ -22,6 +23,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Pods", icon: ServerIcon },
   { id: "Blast Radius", icon: ShieldAlertIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -106,6 +108,7 @@ export default function NodeDetailPage() {
         {activeTab === "Overview" && <OverviewTab node={node} pods={pods} />}
         {activeTab === "Pods" && <PodsTab pods={pods} />}
         {activeTab === "Blast Radius" && <BlastRadiusContent resourceType="node" resource={{ ...node, pods }} namespace={null} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="node" resource={node} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={node} />}
       </div>

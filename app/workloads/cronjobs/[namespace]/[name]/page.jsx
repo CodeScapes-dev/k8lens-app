@@ -8,7 +8,9 @@ import {
   HistoryIcon,
   BellIcon,
   TagIcon,
+  ShareIcon,
 } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -24,6 +26,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Resources", icon: CpuIcon },
   { id: "Run History", icon: HistoryIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -184,6 +187,7 @@ export default function CronJobDetailPage() {
         {activeTab === "Overview" && <OverviewTab cj={cj} />}
         {activeTab === "Resources" && <ResourcesTab containers={containers} />}
         {activeTab === "Run History" && <RunHistoryTab jobs={jobs} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="cronjob" resource={cj} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={cj} />}
       </div>

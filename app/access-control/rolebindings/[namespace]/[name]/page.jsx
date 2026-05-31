@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, UsersIcon, GridIcon, BellIcon, TagIcon } from "lucide-react";
+import { LayoutDashboardIcon, UsersIcon, GridIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import Link from "next/link";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { Panel } from "@/components/kl/Panel";
@@ -20,6 +21,7 @@ const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Subjects", icon: UsersIcon },
   { id: "Permissions", icon: GridIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -153,6 +155,7 @@ export default function RoleBindingDetailPage() {
             <PermissionMatrixTab rules={rules} />
           </div>
         )}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="rolebinding" resource={rb} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={rb} />}
       </div>

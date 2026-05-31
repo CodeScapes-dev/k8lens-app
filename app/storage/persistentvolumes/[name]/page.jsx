@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, BellIcon, TagIcon, ServerIcon } from "lucide-react";
+import { LayoutDashboardIcon, BellIcon, TagIcon, ServerIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLStatus } from "@/components/kl/Status";
 import { calculateAge } from "@/lib/k8s/utils";
@@ -16,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Resources", icon: ServerIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -85,6 +87,7 @@ export default function PVDetailPage() {
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab pv={pv} />}
         {activeTab === "Resources" && <ResourcesTab pods={pods} spec={spec} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="persistentvolume" resource={pv} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={pv} />}
       </div>

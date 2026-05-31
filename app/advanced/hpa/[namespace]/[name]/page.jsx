@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, BellIcon, TagIcon, ActivityIcon } from "lucide-react";
+import { LayoutDashboardIcon, BellIcon, TagIcon, ActivityIcon, ShareIcon } from "lucide-react";
+import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLStatus } from "@/components/kl/Status";
 import { KLBadge } from "@/components/kl/Badge";
@@ -17,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Conditions", icon: ActivityIcon },
+  { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
 ];
@@ -91,6 +93,7 @@ export default function HPADetailPage() {
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab hpa={hpa} />}
         {activeTab === "Conditions" && <ConditionsTab hpa={hpa} />}
+        {activeTab === "Dependencies" && <DependencyGraph resourceType="horizontalpodautoscaler" resource={hpa} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={hpa} />}
       </div>
