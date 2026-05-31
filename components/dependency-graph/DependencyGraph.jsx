@@ -403,14 +403,15 @@ export function DependencyGraph({ resourceType, resource }) {
   const { data: configmapsData } = useK8sResource("core",                        "configmaps",                 opts);
   const { data: secretsData    } = useK8sResource("core",                        "secrets",                    opts);
 
+  // useK8sResource returns json.data directly (already the items array)
   const allData = React.useMemo(() => ({
-    services:    servicesData?.items    ?? [],
-    ingresses:   ingressesData?.items   ?? [],
-    pods:        podsData?.items        ?? [],
-    replicasets: replicasetsData?.items ?? [],
-    hpas:        hpasData?.items        ?? [],
-    configmaps:  configmapsData?.items  ?? [],
-    secrets:     secretsData?.items     ?? [],
+    services:    Array.isArray(servicesData)    ? servicesData    : (servicesData?.data    ?? servicesData?.items    ?? []),
+    ingresses:   Array.isArray(ingressesData)   ? ingressesData   : (ingressesData?.data   ?? ingressesData?.items   ?? []),
+    pods:        Array.isArray(podsData)        ? podsData        : (podsData?.data        ?? podsData?.items        ?? []),
+    replicasets: Array.isArray(replicasetsData) ? replicasetsData : (replicasetsData?.data ?? replicasetsData?.items ?? []),
+    hpas:        Array.isArray(hpasData)        ? hpasData        : (hpasData?.data        ?? hpasData?.items        ?? []),
+    configmaps:  Array.isArray(configmapsData)  ? configmapsData  : (configmapsData?.data  ?? configmapsData?.items  ?? []),
+    secrets:     Array.isArray(secretsData)     ? secretsData     : (secretsData?.data     ?? secretsData?.items     ?? []),
   }), [servicesData, ingressesData, podsData, replicasetsData, hpasData, configmapsData, secretsData]);
 
   if (!resource) return null;
