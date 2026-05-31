@@ -168,6 +168,12 @@ export function AppShell({ children }) {
   }, []);
 
   useEffect(() => {
+    const handler = (e) => openSettings(e.detail?.tab ?? "general");
+    window.addEventListener("kl:open-settings", handler);
+    return () => window.removeEventListener("kl:open-settings", handler);
+  }, []);
+
+  useEffect(() => {
     if (!hasHydrated) return;
     if (clusters.length === 0 && pathname !== "/connect") {
       router.replace("/connect");
