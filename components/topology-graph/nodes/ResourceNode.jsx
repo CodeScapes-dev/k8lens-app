@@ -169,7 +169,9 @@ export function ResourceNode({ data, selected }) {
     <div
       style={{
         background: "var(--kl-surface)",
-        border: `1.5px solid ${selected ? color : "var(--kl-border)"}`,
+        borderTop: `1.5px solid ${selected ? color : "var(--kl-border)"}`,
+        borderRight: `1.5px solid ${selected ? color : "var(--kl-border)"}`,
+        borderBottom: `1.5px solid ${selected ? color : "var(--kl-border)"}`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 8,
         padding: "7px 10px 7px 8px",

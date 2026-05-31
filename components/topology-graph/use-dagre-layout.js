@@ -84,8 +84,8 @@ export function useDagreLayout(filteredData) {
       g.setDefaultEdgeLabel(() => ({}));
       g.setGraph({
         rankdir: "TB",
-        ranksep: 36,
-        nodesep: 24,
+        ranksep: 80,
+        nodesep: 40,
         marginx: 0,
         marginy: 0,
       });
@@ -94,13 +94,11 @@ export function useDagreLayout(filteredData) {
 
       const groupNodeIds = new Set(groupNodes.map((n) => n.id));
       edges.forEach((e) => {
-        if (
-          groupNodeIds.has(e.source) &&
-          groupNodeIds.has(e.target) &&
-          e.type !== "selects" // skip service→pod for layout (too many lines)
-        ) {
-          g.setEdge(e.source, e.target);
-        }
+        if (!groupNodeIds.has(e.source) || !groupNodeIds.has(e.target)) return;
+        // "selects" (service→pod) edges get lower weight so dagre places services
+        // near their pods without dominating the ownership hierarchy layout.
+        const weight = e.type === "selects" ? 1 : 3;
+        g.setEdge(e.source, e.target, { weight });
       });
 
       dagre.layout(g);
@@ -172,7 +170,8 @@ export function useDagreLayout(filteredData) {
         zIndex: 1,
         style: {
           stroke: e.ui?.color ?? "#94a3b8",
-          strokeWidth: 1.5,
+          strokeWidth: e.type === "selects" ? 1 : 1.5,
+          opacity: e.type === "selects" ? 0.4 : 0.8,
           strokeDasharray:
             e.ui?.style === "dashed"
               ? "6,3"
