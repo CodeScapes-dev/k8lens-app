@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getClientsFromRequest } from "@/lib/k8s/client";
+import { getClientsFromRequest, isBlockedServerUrl } from "@/lib/k8s/client";
 import { extractK8sError } from "@/lib/k8s/utils";
+
+const SAFE_K8S_NAME = /^[a-z0-9][a-z0-9\-\.]{0,252}$/;
 import https from "node:https";
 import http from "node:http";
 
@@ -39,12 +41,20 @@ export async function GET(request) {
     return NextResponse.json({ error: "Missing required params: namespace, pod, context" }, { status: 400 });
   }
 
+  if (!SAFE_K8S_NAME.test(namespace) || !SAFE_K8S_NAME.test(pod)) {
+    return NextResponse.json({ error: "Invalid namespace or pod name" }, { status: 400 });
+  }
+
   try {
     const clients = getClientsFromRequest(request);
     const kc = clients.kubeConfig;
     const cluster = kc.getCurrentCluster();
     if (!cluster?.server) {
       return NextResponse.json({ error: "No cluster server configured" }, { status: 500 });
+    }
+
+    if (isBlockedServerUrl(cluster.server)) {
+      return NextResponse.json({ error: "Cluster server address is not allowed" }, { status: 403 });
     }
 
     const logParams = new URLSearchParams({ tailLines: String(tailLines) });
