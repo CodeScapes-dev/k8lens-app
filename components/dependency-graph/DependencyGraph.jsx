@@ -6,43 +6,7 @@ import { resolveDependencies } from "@/lib/k8s/dependency-resolver";
 import { useK8sResource } from "@/hooks/use-k8s";
 import { useClusterStore } from "@/stores/clusterStore";
 
-const KIND_COLOR = {
-  Pod: "#6366f1",
-  Deployment: "#3b82f6",
-  StatefulSet: "#8b5cf6",
-  DaemonSet: "#06b6d4",
-  Service: "#10b981",
-  Ingress: "#f59e0b",
-  ConfigMap: "#84cc16",
-  Secret: "#ef4444",
-  ServiceAccount: "#f97316",
-  PersistentVolumeClaim: "#a78bfa",
-  PersistentVolume: "#7c3aed",
-  StorageClass: "#64748b",
-  HorizontalPodAutoscaler: "#ec4899",
-  Role: "#f43f5e",
-  ClusterRole: "#dc2626",
-};
-
-function kindRoute(kind, namespace, name) {
-  const routeMap = {
-    Pod: `/workloads/pods/${namespace}/${name}`,
-    Deployment: `/workloads/deployments/${namespace}/${name}`,
-    StatefulSet: `/workloads/statefulsets/${namespace}/${name}`,
-    DaemonSet: `/workloads/daemonsets/${namespace}/${name}`,
-    Service: `/network/services/${namespace}/${name}`,
-    Ingress: `/network/ingresses/${namespace}/${name}`,
-    ConfigMap: `/configuration/configmaps/${namespace}/${name}`,
-    Secret: `/configuration/secrets/${namespace}/${name}`,
-    ServiceAccount: `/access-control/serviceaccounts/${namespace}/${name}`,
-    Role: `/access-control/roles/${namespace}/${name}`,
-    ClusterRole: `/access-control/clusterroles/${name}`,
-    HorizontalPodAutoscaler: `/advanced/hpa/${namespace}/${name}`,
-    PersistentVolumeClaim: `/storage/persistentvolumeclaims/${namespace}/${name}`,
-    PersistentVolume: `/storage/persistentvolumes/${name}`,
-  };
-  return routeMap[kind] ?? null;
-}
+import { KIND_COLOR, kindRoute } from "@/lib/k8s/kind-config";
 
 function Node({ kind, name, namespace, relationship, isRoot = false, onClick }) {
   const color = KIND_COLOR[kind] ?? "var(--kl-text-muted)";

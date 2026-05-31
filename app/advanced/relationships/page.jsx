@@ -1,9 +1,7 @@
 "use client";
 
+import { TopologyGraph } from "@/components/topology-graph/TopologyGraph";
+
 export default function Page() {
-  return (
-    <div className="p-6 text-muted-foreground text-sm">
-      Coming soon.
-    </div>
-  );
+  return <TopologyGraph />;
 }
