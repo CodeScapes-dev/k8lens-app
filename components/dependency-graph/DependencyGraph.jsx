@@ -697,24 +697,77 @@ function buildGraph(resourceType, resource, allData) {
     }
 
     case "node": {
-      (allData.pods ?? []).forEach((pod) => {
-        if (pod?.spec?.nodeName === rname) {
-          const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? ns, "hosted");
-          addEdge(rootId, id, "hosts", KIND_COLOR.Pod);
+      const nodePods = (allData.allPods ?? []).filter((p) => p?.spec?.nodeName === rname);
+
+      // collect owning workloads so we can group pods under them
+      const ownerIds = new Map(); // "Kind/ns/name" -> graph node id
+
+      const getOrAddOwner = (kind, name, podNs) => {
+        const key = `${kind}/${podNs}/${name}`;
+        if (ownerIds.has(key)) return ownerIds.get(key);
+        const id = addNode(kind, name, podNs, null);
+        addEdge(rootId, id, "hosts", KIND_COLOR[kind] ?? "#94a3b8");
+        ownerIds.set(key, id);
+        return id;
+      };
+
+      // build a quick lookup: rs name -> deployment name (for pod → deployment chain)
+      const rsToDeployment = new Map();
+      (allData.allReplicasets ?? []).forEach((rs) => {
+        const owner = (rs?.metadata?.ownerReferences ?? []).find((o) => o.kind === "Deployment");
+        if (owner) rsToDeployment.set(`${rs?.metadata?.namespace}/${rs?.metadata?.name}`, { name: owner.name, ns: rs?.metadata?.namespace });
+      });
+
+      nodePods.forEach((pod) => {
+        const podNs   = pod?.metadata?.namespace ?? "";
+        const podName = pod?.metadata?.name;
+        const owners  = pod?.metadata?.ownerReferences ?? [];
+
+        let parentId = null;
+
+        if (owners.length > 0) {
+          const owner = owners[0];
+          if (owner.kind === "ReplicaSet") {
+            const dep = rsToDeployment.get(`${podNs}/${owner.name}`);
+            if (dep) {
+              // pod → ReplicaSet → Deployment; show Deployment as direct child of node
+              parentId = getOrAddOwner("Deployment", dep.name, podNs);
+            } else {
+              parentId = getOrAddOwner("ReplicaSet", owner.name, podNs);
+            }
+          } else if (["StatefulSet","DaemonSet","Job","ReplicationController"].includes(owner.kind)) {
+            parentId = getOrAddOwner(owner.kind, owner.name, podNs);
+          }
         }
+
+        const podId = addNode("Pod", podName, podNs, null);
+        addEdge(parentId ?? rootId, podId, "runs", KIND_COLOR.Pod);
       });
       break;
     }
 
     case "namespace": {
-      // show ResourceQuotas and LimitRanges as upstream policy
-      (allData.pods ?? []).slice(0, 12).forEach((pod) => {
-        const id = addNode("Pod", pod?.metadata?.name, pod?.metadata?.namespace ?? rname, null);
-        addEdge(rootId, id, "contains", KIND_COLOR.Pod);
+      // rname is the namespace name; use cluster-wide lists filtered to this namespace
+      const inNs = (item) => item?.metadata?.namespace === rname;
+      (allData.allDeployments ?? []).filter(inNs).forEach((d) => {
+        const id = addNode("Deployment", d?.metadata?.name, rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.Deployment);
       });
-      (allData.services ?? []).slice(0, 8).forEach((svc) => {
-        const id = addNode("Service", svc?.metadata?.name, svc?.metadata?.namespace ?? rname, null);
-        addEdge(rootId, id, "contains", KIND_COLOR.Service);
+      (allData.allStatefulsets ?? []).filter(inNs).forEach((s) => {
+        const id = addNode("StatefulSet", s?.metadata?.name, rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.StatefulSet);
+      });
+      (allData.allDaemonsets ?? []).filter(inNs).forEach((d) => {
+        const id = addNode("DaemonSet", d?.metadata?.name, rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.DaemonSet);
+      });
+      (allData.allJobs ?? []).filter(inNs).forEach((j) => {
+        const id = addNode("Job", j?.metadata?.name, rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.Job);
+      });
+      (allData.allPods ?? []).filter(inNs).slice(0, 20).forEach((pod) => {
+        const id = addNode("Pod", pod?.metadata?.name, rname, null);
+        addEdge(rootId, id, "contains", KIND_COLOR.Pod);
       });
       break;
     }
@@ -836,6 +889,12 @@ export function DependencyGraph({ resourceType, resource }) {
   const { data: servicesData         } = useK8sResource("core",       "services",                 nsOpts);
   const { data: ingressesData        } = useK8sResource("networking", "ingresses",                nsOpts);
   const { data: podsData             } = useK8sResource("core",       "pods",                     nsOpts);
+  const { data: allPodsData          } = useK8sResource("core",       "pods",                     clusterOpts);
+  const { data: allDeploymentsData   } = useK8sResource("apps",       "deployments",              clusterOpts);
+  const { data: allStatefulsetsData  } = useK8sResource("apps",       "statefulsets",             clusterOpts);
+  const { data: allDaemonsetsData    } = useK8sResource("apps",       "daemonsets",               clusterOpts);
+  const { data: allJobsData          } = useK8sResource("batch",      "jobs",                     clusterOpts);
+  const { data: allReplicasetsData   } = useK8sResource("apps",       "replicasets",              clusterOpts);
   const { data: replicasetsData      } = useK8sResource("apps",       "replicasets",              nsOpts);
   const { data: hpasData             } = useK8sResource("autoscaling","horizontalpodautoscalers", nsOpts);
   const { data: configmapsData       } = useK8sResource("core",       "configmaps",               nsOpts);
@@ -862,6 +921,12 @@ export function DependencyGraph({ resourceType, resource }) {
     services:            norm(servicesData),
     ingresses:           norm(ingressesData),
     pods:                norm(podsData),
+    allPods:             norm(allPodsData),
+    allDeployments:      norm(allDeploymentsData),
+    allStatefulsets:     norm(allStatefulsetsData),
+    allDaemonsets:       norm(allDaemonsetsData),
+    allJobs:             norm(allJobsData),
+    allReplicasets:      norm(allReplicasetsData),
     replicasets:         norm(replicasetsData),
     hpas:                norm(hpasData),
     configmaps:          norm(configmapsData),
@@ -882,7 +947,8 @@ export function DependencyGraph({ resourceType, resource }) {
     clusterrolebindings: norm(clusterrolebindingsData),
     ingressclasses:      norm(ingressclassesData),
   }), [
-    servicesData, ingressesData, podsData, replicasetsData, hpasData,
+    servicesData, ingressesData, podsData, allPodsData, replicasetsData, hpasData,
+    allDeploymentsData, allStatefulsetsData, allDaemonsetsData, allJobsData, allReplicasetsData,
     configmapsData, secretsData, serviceaccountsData, jobsData, cronjobsData,
     rcData, endpointsData, networkpoliciesData, pvcsData, pvsData,
     storageclassesData, nodesData, rolesData, rolebindingsData,
