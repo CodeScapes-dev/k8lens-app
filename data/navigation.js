@@ -81,6 +81,7 @@ export const navigation = [
       { href: "/advanced/hpa", label: "Autoscalers (HPA)", icon: "Gauge" },
       { href: "/advanced/customresourcedefinitions", label: "Custom Resource Definitions", icon: "Boxes" },
       { href: "/advanced/relationships", label: "Resource Graph", icon: "Workflow" },
+      { href: "/advanced/helm", label: "Helm Releases", icon: "Package" },
     ],
   },
 ];

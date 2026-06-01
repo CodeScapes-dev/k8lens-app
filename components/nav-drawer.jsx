@@ -42,6 +42,7 @@ import {
   LinkIcon,
   ActivityIcon,
   ScrollTextIcon,
+  PackageIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -104,6 +105,7 @@ const ICON_MAP = {
   Link: LinkIcon,
   Activity: ActivityIcon,
   ScrollText: ScrollTextIcon,
+  Package: PackageIcon,
 };
 
 function NavIcon({ name, className }) {

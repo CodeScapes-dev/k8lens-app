@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useClusterStore } from '@/stores/clusterStore';
 import { useDashboardData } from '@/hooks/use-dashboard';
+import { useK8sResource } from '@/hooks/use-k8s';
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import {
   aggregateNodeHealth,
@@ -284,6 +285,7 @@ export default function DashboardPage() {
 
 function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
   const [eventFilter, setEventFilter] = React.useState('All');
+  const { data: helmData, loading: helmLoading } = useK8sResource("helm", "releases", { listParams: { limit: 100 } });
   const [syncedAt] = React.useState(Date.now());
   const [costEnabled, setCostEnabled] = React.useState(true);
 
@@ -395,13 +397,22 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
       }));
   }, [data.events, eventFilter]);
 
-  const helmReleases = [
-    { n: 'caretta', ns: 'caretta', chart: 'caretta', ver: '0.0.16', tone: 'ok' },
-    { n: 'datadog-operator', ns: 'datadog', chart: 'datadog-operator', ver: '1.4.1', tone: 'ok' },
-    { n: 'kube-fledged', ns: 'kubefledged', chart: 'kube-fledged', ver: 'v0.10.0', tone: 'ok' },
-    { n: 'mcp-s', ns: 'mcp-s', chart: 'mcp-s', ver: '0.1.20', tone: 'err' },
-    { n: 'opencost', ns: 'opencost', chart: 'opencost', ver: '2.5.5', tone: 'ok' },
-  ];
+  const HELM_DISPLAY_LIMIT = 5;
+  const helmReleases = React.useMemo(
+    () => helmData.map((r) => ({
+      n: r.metadata?.name,
+      ns: r.metadata?.namespace,
+      chart: r.spec?.chart,
+      ver: r.spec?.chartVersion,
+      appVer: r.spec?.appVersion,
+      rev: r.spec?.revision,
+      phase: r.status?.phase ?? 'unknown',
+      tone: r.status?.phase === "deployed" ? "ok" : r.status?.phase === "failed" ? "err" : "warn",
+    })),
+    [helmData]
+  );
+  const helmVisible = helmReleases.slice(0, HELM_DISPLAY_LIMIT);
+  const helmOverflow = helmReleases.length - helmVisible.length;
 
   return (
     <div style={{ padding: '14px 20px 28px', maxWidth: 1600, margin: '0 auto' }}>
@@ -603,44 +614,57 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--kl-text)' }}>Helm releases</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 20, height: 20, padding: '0 6px', borderRadius: 5, background: 'var(--kl-surface-2)', border: '1px solid var(--kl-border)', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-text-2)', fontWeight: 600 }}>{helmReleases.length}</span>
               </div>
-              <Link href="#" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--kl-accent)', fontWeight: 500 }}>Open Helm {I.chevRight}</Link>
+              <Link href="/advanced/helm" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--kl-accent)', fontWeight: 500 }}>Open Helm {I.chevRight}</Link>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-              <thead>
-                <tr style={{ color: 'var(--kl-text-muted)' }}>
-                  {['Release', 'Chart', 'Status'].map((h, i) => (
-                    <th key={h} style={{ textAlign: i === 2 ? 'right' : 'left', padding: `8px ${i === 0 || i === 2 ? 20 : 8}px`, fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 500, letterSpacing: 0.3, textTransform: 'uppercase', borderBottom: '1px solid var(--kl-border)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {helmReleases.map((h, i, arr) => (
-                  <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--kl-border)' : 'none' }}>
-                    <td style={{ padding: '10px 20px', minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 999, background: h.tone === 'ok' ? 'var(--kl-ok)' : 'var(--kl-err)', flexShrink: 0 }} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--kl-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.n}</div>
-                          <Badge variant="secondary" className="mt-0.5 font-mono text-[10px] font-normal">{h.ns}</Badge>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 8px', minWidth: 0 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-                        <Badge variant="outline" className="font-mono text-[10.5px] font-normal">{h.chart}</Badge>
-                        <Badge variant="secondary" className="font-mono text-[10px] font-normal">{h.ver}</Badge>
-                      </div>
-                    </td>
-                    <td style={{ padding: '10px 20px', textAlign: 'right' }}>
-                      <KLBadge tone={h.tone === 'ok' ? 'ok' : 'err'}>{h.tone === 'ok' ? 'deployed' : 'failed'}</KLBadge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ padding: '10px 20px', borderTop: '1px solid var(--kl-border)' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-text-muted)' }}>+7 more releases</span>
-            </div>
+            {helmLoading ? (
+              <div style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--kl-text-muted)', fontSize: 12.5 }}>Loading releases…</div>
+            ) : helmReleases.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--kl-text-muted)', marginBottom: 6 }}>No Helm releases found</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-text-faint)' }}>Deploy a chart with helm install to get started</div>
+              </div>
+            ) : (
+              <>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                  <thead>
+                    <tr style={{ color: 'var(--kl-text-muted)' }}>
+                      {['Release', 'Namespace', 'Chart', 'Version', 'Status'].map((h, i) => (
+                        <th key={h} style={{ textAlign: 'left', padding: `8px ${i === 0 ? 20 : i === 4 ? '8px 20px 8px 8px' : 8}px`, fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 500, letterSpacing: 0.3, textTransform: 'uppercase', borderBottom: '1px solid var(--kl-border)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {helmVisible.map((h, i, arr) => (
+                      <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--kl-border)' : 'none' }}>
+                        <td style={{ padding: '10px 8px 10px 20px', minWidth: 0 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, fontWeight: 500, color: 'var(--kl-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{h.n}</span>
+                        </td>
+                        <td style={{ padding: '10px 8px', minWidth: 0 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--kl-text-2)' }}>{h.ns}</span>
+                        </td>
+                        <td style={{ padding: '10px 8px', minWidth: 0 }}>
+                          <Badge variant="outline" className="font-mono text-[10.5px] font-normal">{h.chart ?? '—'}</Badge>
+                        </td>
+                        <td style={{ padding: '10px 8px', minWidth: 0 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--kl-text-muted)' }}>{h.ver ?? '—'}</span>
+                        </td>
+                        <td style={{ padding: '10px 20px 10px 8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: 999, background: h.tone === 'ok' ? 'var(--kl-ok)' : h.tone === 'err' ? 'var(--kl-err)' : 'var(--kl-warn)', flexShrink: 0 }} />
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, textTransform: 'capitalize', color: 'var(--kl-text-2)' }}>{h.phase}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {helmOverflow > 0 && (
+                  <div style={{ padding: '10px 20px', borderTop: '1px solid var(--kl-border)' }}>
+                    <Link href="/advanced/helm" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-accent)' }}>+{helmOverflow} more release{helmOverflow !== 1 ? 's' : ''}</Link>
+                  </div>
+                )}
+              </>
+            )}
           </Card>
         </div>
       </div>
