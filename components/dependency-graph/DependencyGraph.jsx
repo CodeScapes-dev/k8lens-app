@@ -747,8 +747,9 @@ function buildGraph(resourceType, resource, allData) {
     }
 
     case "namespace": {
-      // rname is the namespace name; use cluster-wide lists filtered to this namespace
       const inNs = (item) => item?.metadata?.namespace === rname;
+
+      // add workloads directly under namespace
       (allData.allDeployments ?? []).filter(inNs).forEach((d) => {
         const id = addNode("Deployment", d?.metadata?.name, rname, null);
         addEdge(rootId, id, "contains", KIND_COLOR.Deployment);
@@ -765,9 +766,32 @@ function buildGraph(resourceType, resource, allData) {
         const id = addNode("Job", j?.metadata?.name, rname, null);
         addEdge(rootId, id, "contains", KIND_COLOR.Job);
       });
-      (allData.allPods ?? []).filter(inNs).slice(0, 20).forEach((pod) => {
-        const id = addNode("Pod", pod?.metadata?.name, rname, null);
-        addEdge(rootId, id, "contains", KIND_COLOR.Pod);
+
+      // build rs → deployment lookup for this namespace
+      const nsRsToDeployment = new Map();
+      (allData.allReplicasets ?? []).filter(inNs).forEach((rs) => {
+        const owner = (rs?.metadata?.ownerReferences ?? []).find((o) => o.kind === "Deployment");
+        if (owner) nsRsToDeployment.set(rs?.metadata?.name, owner.name);
+      });
+
+      // connect pods to their owner workload, not directly to namespace
+      (allData.allPods ?? []).filter(inNs).forEach((pod) => {
+        const podId = addNode("Pod", pod?.metadata?.name, rname, null);
+        const owners = pod?.metadata?.ownerReferences ?? [];
+        let parentId = null;
+        if (owners.length > 0) {
+          const owner = owners[0];
+          if (owner.kind === "ReplicaSet") {
+            const depName = nsRsToDeployment.get(owner.name);
+            const parentName = depName ?? owner.name;
+            const parentKind = depName ? "Deployment" : "ReplicaSet";
+            parentId = `${parentKind}__${rname}__${parentName}`;
+          } else if (["StatefulSet","DaemonSet","Job","ReplicationController"].includes(owner.kind)) {
+            parentId = `${owner.kind}__${rname}__${owner.name}`;
+          }
+        }
+        // only wire to parent if that node is already in the graph
+        addEdge(nodesMap.has(parentId) ? parentId : rootId, podId, "runs", KIND_COLOR.Pod);
       });
       break;
     }
