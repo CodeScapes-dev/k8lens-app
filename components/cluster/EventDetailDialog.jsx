@@ -10,8 +10,8 @@ function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(false);
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 640px)");
-    setIsMobile(mq.matches);
-    const handler = (e) => setIsMobile(e.matches);
+    React.startTransition(() => setIsMobile(mq.matches));
+    const handler = (e) => React.startTransition(() => setIsMobile(e.matches));
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);

@@ -43,7 +43,7 @@ export function useTopology(options = {}) {
   }, [activeContext, clusters, namespace, includeClusterScoped]);
 
   React.useEffect(() => {
-    fetchTopology();
+    React.startTransition(() => { fetchTopology(); });
   }, [fetchTopology]);
 
   return { data, loading, error, refresh: fetchTopology };

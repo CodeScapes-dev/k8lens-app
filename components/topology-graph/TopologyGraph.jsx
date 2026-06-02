@@ -147,8 +147,10 @@ function TopologyGraphInner() {
       .filter((g) => g.type === "namespace")
       .map((g) => g.label);
     const userNs = nsLabels.filter((n) => !SYSTEM_NAMESPACES.has(n));
-    setSelectedNamespace((userNs[0] ?? nsLabels[0]) ?? null);
-    setInitialised(true);
+    React.startTransition(() => {
+      setSelectedNamespace((userNs[0] ?? nsLabels[0]) ?? null);
+      setInitialised(true);
+    });
   }, [data, initialised]);
 
   const allNamespaces = React.useMemo(

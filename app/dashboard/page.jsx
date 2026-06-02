@@ -286,13 +286,13 @@ export default function DashboardPage() {
 function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
   const [eventFilter, setEventFilter] = React.useState('All');
   const { data: helmData, loading: helmLoading } = useK8sResource("helm", "releases", { listParams: { limit: 100 } });
-  const [syncedAt] = React.useState(Date.now());
+  const [syncedAt] = React.useState(() => Date.now());
   const [costEnabled, setCostEnabled] = React.useState(true);
 
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem('K8Lens-cost-config');
-      if (raw) setCostEnabled(JSON.parse(raw).enabled !== false);
+      if (raw) React.startTransition(() => setCostEnabled(JSON.parse(raw).enabled !== false));
     } catch {}
   }, []);
 
@@ -329,8 +329,8 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
   const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
 
+  const [now] = React.useState(() => Date.now());
   const hourlyData = React.useMemo(() => {
-    const now = Date.now();
     const buckets = Array.from({ length: 24 }, () => ({ n: 0, w: 0, e: 0 }));
     (data.events || []).forEach((ev) => {
       const ts = new Date(ev?.metadata?.creationTimestamp || ev?.lastTimestamp || 0).getTime();
@@ -341,7 +341,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
       }
     });
     return buckets;
-  }, [data.events]);
+  }, [data.events, now]);
 
   const totalEvents = (data.events || []).length;
   const warnEvents = (data.events || []).filter((e) => e?.type === 'Warning').length;

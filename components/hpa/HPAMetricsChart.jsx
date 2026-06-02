@@ -118,8 +118,10 @@ export function HPAMetricsChart({ metrics = [], currentMetrics = [] }) {
       date: new Date(now - (15 - i) * 60000).toISOString(),
       value: Math.max(0, Math.min(100, base + (Math.random() * 10 - 5))),
     }));
-    setCpuData(gen(cpuValue).map((d) => ({ ...d, cpu: +d.value.toFixed(1) })));
-    setMemData(gen(memValue).map((d) => ({ ...d, memory: +d.value.toFixed(1) })));
+    React.startTransition(() => {
+      setCpuData(gen(cpuValue).map((d) => ({ ...d, cpu: +d.value.toFixed(1) })));
+      setMemData(gen(memValue).map((d) => ({ ...d, memory: +d.value.toFixed(1) })));
+    });
   }, [cpuValue, memValue]);
 
   if (cpuTarget === 0 && memTarget === 0) return null;

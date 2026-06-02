@@ -18,7 +18,9 @@ export const ALL_KINDS = KIND_GROUPS.flatMap((g) => g.kinds);
 
 function useClickOutside(ref, handler) {
   const handlerRef = React.useRef(handler);
-  handlerRef.current = handler;
+  React.useLayoutEffect(() => {
+    handlerRef.current = handler;
+  });
 
   React.useEffect(() => {
     const onDown = (e) => {

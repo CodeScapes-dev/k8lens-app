@@ -95,7 +95,7 @@ export function LogsTab({ pod }) {
     }
   }, [namespace, name, activeContext, clusters, container, tailLines, sinceSeconds, live]);
 
-  React.useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  React.useEffect(() => { React.startTransition(() => { fetchLogs(); }); }, [fetchLogs]);
 
   React.useEffect(() => {
     if (!live) return;

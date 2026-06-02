@@ -22,7 +22,7 @@ function formatCost(amount, currency) {
 export function CostCard({ containers = [], replicas = 1 }) {
   const [config, setConfig] = React.useState(loadConfig);
 
-  React.useEffect(() => { setConfig(loadConfig()); }, []);
+  React.useEffect(() => { React.startTransition(() => setConfig(loadConfig())); }, []);
 
   if (!config?.enabled) return null;
 

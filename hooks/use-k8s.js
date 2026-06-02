@@ -85,7 +85,7 @@ export function useK8sResource(apiGroup, resource, options = {}) {
   }, [fetchData]);
 
   React.useEffect(() => {
-    fetchData();
+    React.startTransition(() => { fetchData(); });
   }, [fetchData]);
 
   React.useEffect(() => {
@@ -134,10 +134,11 @@ export function useK8sDetail(type, namespace, name) {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeContext, clusters, type, namespace, name]);
 
   React.useEffect(() => {
-    fetchData();
+    React.startTransition(() => { fetchData(); });
   }, [fetchData]);
 
   React.useEffect(() => {

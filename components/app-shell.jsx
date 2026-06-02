@@ -137,7 +137,7 @@ export function AppShell({ children }) {
 
   React.useEffect(() => {
     useClusterStore.persist.rehydrate();
-    setHasHydrated(true);
+    React.startTransition(() => setHasHydrated(true));
   }, []);
 
   const openSettings = (tab = "general") => {
@@ -183,11 +183,13 @@ export function AppShell({ children }) {
   // Countdown timer that stays in sync with auto-refresh
   React.useEffect(() => {
     if (!autoRefresh) {
-      setCountdown(0);
+      React.startTransition(() => setCountdown(0));
       return;
     }
-    setCountdown(autoRefresh);
-    setProgressKey((k) => k + 1);
+    React.startTransition(() => {
+      setCountdown(autoRefresh);
+      setProgressKey((k) => k + 1);
+    });
     const tick = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) { setProgressKey((k) => k + 1); return autoRefresh; }

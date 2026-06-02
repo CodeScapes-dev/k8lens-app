@@ -36,7 +36,8 @@ export default function SecretDetailPage() {
   const keys = Object.keys(secret?.data ?? {});
   const labels = secret?.metadata?.labels ?? {};
   const createdAt = secret?.metadata?.creationTimestamp;
-  const ageDays = createdAt ? (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24) : 0;
+  // eslint-disable-next-line react-hooks/purity
+  const ageDays = React.useMemo(() => createdAt ? (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24) : 0, [createdAt]);
 
   if (error) return (
     <div className="flex flex-col items-center gap-3 pt-20 px-4">

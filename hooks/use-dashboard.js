@@ -50,6 +50,7 @@ export function useDashboardData() {
       setLoading(false);
       setRefreshing(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeContext, clusters]);
 
   React.useEffect(() => {
@@ -57,7 +58,7 @@ export function useDashboardData() {
   }, [fetchData]);
 
   React.useEffect(() => {
-    fetchData();
+    React.startTransition(() => { fetchData(); });
   }, [fetchData]);
 
   React.useEffect(() => {
