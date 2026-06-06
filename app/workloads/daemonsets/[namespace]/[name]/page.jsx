@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -15,9 +15,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { OverviewTab } from "@/components/daemonset-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/daemonset-detail/tabs/ResourcesTab";
 import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
+import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Metrics", icon: ActivityIcon },
   { id: "Resources", icon: CpuIcon },
   { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
@@ -105,6 +107,7 @@ export default function DaemonSetDetailPage() {
         {activeTab === "Dependencies" && <DependencyGraph resourceType="daemonset" resource={ds} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={ds} />}
+        {activeTab === "Metrics" && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
       </div>
     </div>
   );

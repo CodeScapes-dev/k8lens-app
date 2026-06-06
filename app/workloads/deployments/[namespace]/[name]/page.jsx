@@ -4,7 +4,7 @@ import React from "react";
 import { useParams } from "next/navigation";
 import {
   LayoutDashboardIcon, CpuIcon, GitBranchIcon,
-  ShieldAlertIcon, BellIcon, TagIcon, ShareIcon,
+  ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon,
 } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
@@ -14,6 +14,7 @@ import { Recommendations } from "@/components/recommendations/Recommendations";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuickStat } from "@/components/detail/helpers";
+import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 import { OverviewTab }       from "@/components/deployment-detail/tabs/OverviewTab";
 import { ResourcesTab }      from "@/components/deployment-detail/tabs/ResourcesTab";
 import { RolloutHistoryTab } from "@/components/deployment-detail/tabs/RolloutHistoryTab";
@@ -23,6 +24,7 @@ import { MetadataTab }       from "@/components/deployment-detail/tabs/MetadataT
 
 const TABS = [
   { id: "Overview",        icon: LayoutDashboardIcon },
+  { id: "Metrics",         icon: ActivityIcon },
   { id: "Resources",       icon: CpuIcon },
   { id: "Rollout History", icon: GitBranchIcon },
   { id: "Blast Radius",    icon: ShieldAlertIcon },
@@ -162,6 +164,7 @@ export default function DeploymentDetailPage() {
         {activeTab === "Dependencies"    && <DependencyGraph   resourceType="deployment" resource={deployment} />}
         {activeTab === "Events"          && <EventsTab         events={events} />}
         {activeTab === "Metadata"        && <MetadataTab       deployment={deployment} />}
+        {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
       </div>
     </div>
   );

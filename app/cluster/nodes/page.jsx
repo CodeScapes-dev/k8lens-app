@@ -88,10 +88,9 @@ export default function Page() {
     {
       id: "cpu",
       header: "CPU",
-      accessorFn: (row) => metricsMap[row.metadata?.name]?.cpu ?? null,
       meta: { mono: true, muted: true, w: "0.7fr" },
       cell: (info) => {
-        const v = info.getValue();
+        const v = metricsMap[info.row.original.metadata?.name]?.cpu ?? null;
         return v != null
           ? <MetricValue display={fmtCores(v)} hover={fmtMilliStr(v)} className="font-mono text-[var(--kl-text-muted)]" />
           : dash;
@@ -100,10 +99,9 @@ export default function Page() {
     {
       id: "memory",
       header: "Memory",
-      accessorFn: (row) => metricsMap[row.metadata?.name]?.memory ?? null,
       meta: { mono: true, muted: true, w: "0.9fr" },
       cell: (info) => {
-        const v = info.getValue();
+        const v = metricsMap[info.row.original.metadata?.name]?.memory ?? null;
         return v != null
           ? <MetricValue display={fmtGB(v)} hover={fmtMB(v)} className="font-mono text-[var(--kl-text-muted)]" />
           : dash;

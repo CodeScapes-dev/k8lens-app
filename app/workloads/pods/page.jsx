@@ -58,10 +58,10 @@ export default function PodsPage() {
     {
       id: "cpu",
       header: "CPU",
-      accessorFn: (row) => metricsMap[`${row.metadata?.namespace}/${row.metadata?.name}`]?.cpu ?? null,
       meta: { mono: true, muted: true, w: "0.7fr" },
       cell: (info) => {
-        const v = info.getValue();
+        const key = `${info.row.original.metadata?.namespace}/${info.row.original.metadata?.name}`;
+        const v = metricsMap[key]?.cpu ?? null;
         return v != null
           ? <MetricValue display={fmtCores(v)} hover={fmtMilliStr(v)} className="font-mono text-[var(--kl-text-muted)]" />
           : dash;
@@ -70,10 +70,10 @@ export default function PodsPage() {
     {
       id: "memory",
       header: "Memory",
-      accessorFn: (row) => metricsMap[`${row.metadata?.namespace}/${row.metadata?.name}`]?.memory ?? null,
       meta: { mono: true, muted: true, w: "0.9fr" },
       cell: (info) => {
-        const v = info.getValue();
+        const key = `${info.row.original.metadata?.namespace}/${info.row.original.metadata?.name}`;
+        const v = metricsMap[key]?.memory ?? null;
         return v != null
           ? <MetricValue display={fmtGB(v)} hover={fmtMB(v)} className="font-mono text-[var(--kl-text-muted)]" />
           : dash;

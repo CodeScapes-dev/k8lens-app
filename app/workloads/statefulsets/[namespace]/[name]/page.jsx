@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -16,9 +16,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { OverviewTab } from "@/components/statefulset-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/statefulset-detail/tabs/ResourcesTab";
 import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
+import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Metrics", icon: ActivityIcon },
   { id: "Resources", icon: CpuIcon },
   { id: "Blast Radius", icon: ShieldAlertIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -108,6 +110,7 @@ export default function StatefulSetDetailPage() {
         {activeTab === "Dependencies" && <DependencyGraph resourceType="statefulset" resource={ss} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={ss} />}
+        {activeTab === "Metrics" && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
       </div>
     </div>
   );

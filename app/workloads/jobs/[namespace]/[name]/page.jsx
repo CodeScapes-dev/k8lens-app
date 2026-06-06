@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
@@ -13,9 +13,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { OverviewTab, jobStatusKind, statusColor } from "@/components/job-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/job-detail/tabs/ResourcesTab";
 import { QuickStat } from "@/components/workload-detail/helpers";
+import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Metrics", icon: ActivityIcon },
   { id: "Resources", icon: CpuIcon },
   { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
@@ -103,6 +105,7 @@ export default function JobDetailPage() {
         {activeTab === "Dependencies" && <DependencyGraph resourceType="job" resource={job} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={job} />}
+        {activeTab === "Metrics" && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
       </div>
     </div>
   );
