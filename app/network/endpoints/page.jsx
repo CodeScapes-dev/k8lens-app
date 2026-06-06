@@ -11,11 +11,14 @@ export default function Page() {
   const [listParams, setListParams] = React.useState({ page: 1, limit: 5, search: "", sortBy: "name", sortOrder: "asc" });
   const [viewMode, setViewMode] = React.useState("Table");
   const [nsFilter, setNsFilter] = React.useState("all");
-  const { data, loading, refreshing, error, pagination } = useK8sResource("core", "endpoints", { listParams });
+  const { data, loading, refreshing, error, pagination } = useK8sResource("core", "endpoints", { listParams, namespace: nsFilter === "all" ? undefined : nsFilter });
 
+  const seenNs = React.useRef(new Set());
+  React.useEffect(() => { data.forEach((r) => { if (r.metadata?.namespace) seenNs.current.add(r.metadata.namespace); }); }, [data]);
   const namespaces = React.useMemo(() => {
-    const ns = [...new Set(data.map((r) => r.metadata?.namespace).filter(Boolean))];
+    const ns = [...seenNs.current].sort();
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   return (
@@ -30,7 +33,7 @@ export default function Page() {
         pagination={pagination}
         listParams={listParams}
         onParamsChange={setListParams}
-        filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={setNsFilter} options={namespaces} />}
+        filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />}
         footerText="Live · watching v1 · endpoints"
         onRowClick={(r) => router.push(`/network/endpoints/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}

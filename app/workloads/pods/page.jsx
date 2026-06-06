@@ -43,7 +43,7 @@ export default function PodsPage() {
   const [statusFilter, setStatusFilter] = React.useState("any");
   const [nodeFilter, setNodeFilter] = React.useState("any");
 
-  const { data, loading, refreshing, error, pagination, refresh } = useK8sResource("core", "pods", { listParams });
+  const { data, loading, refreshing, error, pagination, refresh } = useK8sResource("core", "pods", { listParams, namespace: nsFilter === "all" ? undefined : nsFilter });
   const { data: metricsData } = useMetrics(`/api/k8s/metrics/pods${nsFilter !== "all" ? `?namespace=${nsFilter}` : ""}`);
   const elapsed = useElapsed();
   const counts = computePodCounts(data);
@@ -84,9 +84,12 @@ export default function PodsPage() {
   const columns = React.useMemo(() => [...podColumns, ...metricsColumns], [metricsColumns]);
 
   // Derive unique namespaces/nodes from current page for filter options
+  const seenNs = React.useRef(new Set());
+  React.useEffect(() => { data.forEach((p) => { if (p.metadata?.namespace) seenNs.current.add(p.metadata.namespace); }); }, [data]);
   const namespaces = React.useMemo(() => {
-    const ns = [...new Set(data.map((p) => p.metadata?.namespace).filter(Boolean))];
+    const ns = [...seenNs.current].sort();
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const nodes = React.useMemo(() => {
@@ -105,7 +108,7 @@ export default function PodsPage() {
 
   const handleNsChange = (val) => {
     setNsFilter(val);
-    // namespace filter is handled server-side via listParams when we add namespace support
+    setListParams((p) => ({ ...p, page: 1 }));
   };
 
   const handleStatusChange = (val) => {

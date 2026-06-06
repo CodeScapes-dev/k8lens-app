@@ -38,13 +38,19 @@ export default function Page() {
   const [viewMode, setViewMode] = React.useState("Table");
   const [nsFilter, setNsFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState("any");
-  const { data, loading, refreshing, error, pagination } = useK8sResource("core", "persistentvolumeclaims", { listParams });
-  const namespaces = React.useMemo(() => { const ns = [...new Set(data.map((r) => r.metadata?.namespace).filter(Boolean))]; return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))]; }, [data]);
+  const { data, loading, refreshing, error, pagination } = useK8sResource("core", "persistentvolumeclaims", { listParams, namespace: nsFilter === "all" ? undefined : nsFilter });
+  const seenNs = React.useRef(new Set());
+  React.useEffect(() => { data.forEach((r) => { if (r.metadata?.namespace) seenNs.current.add(r.metadata.namespace); }); }, [data]);
+  const namespaces = React.useMemo(() => {
+    const ns = [...seenNs.current].sort();
+    return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
   return (
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="Persistent Volume Claims" count={pagination?.totalItems} subtitle="v1 · core · all namespaces"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={pvcColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<><FilterChip label="Namespace" value={nsFilter} onChange={setNsFilter} options={namespaces} /><FilterChip label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} /></>} footerText="Live · watching v1 · persistentvolumeclaims" onRowClick={(r) => router.push(`/storage/persistentvolumeclaims/${r.metadata.namespace}/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
+      <DataTable columns={pvcColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<><FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} /><FilterChip label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} /></>} footerText="Live · watching v1 · persistentvolumeclaims" onRowClick={(r) => router.push(`/storage/persistentvolumeclaims/${r.metadata.namespace}/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
     </div>
   );
 }

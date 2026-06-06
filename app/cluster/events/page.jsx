@@ -37,7 +37,7 @@ export default function Page() {
   const [nsFilter, setNsFilter] = React.useState("all");
   const [typeFilter, setTypeFilter] = React.useState("any");
   const [selectedEvent, setSelectedEvent] = React.useState(null);
-  const { data, loading, refreshing, error, pagination } = useK8sResource("events", null, { listParams });
+  const { data, loading, refreshing, error, pagination } = useK8sResource("events", null, { listParams, namespace: nsFilter === "all" ? undefined : nsFilter });
   const { data: allData } = useK8sResource("events", null, { listParams: { page: 1, limit: 500, sortBy: "age", sortOrder: "desc" } });
   const namespaces = React.useMemo(() => {
     const ns = [...new Set(allData.map((r) => r.metadata?.namespace).filter(Boolean))].sort();
@@ -47,7 +47,7 @@ export default function Page() {
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="Events" count={pagination?.totalItems} subtitle="events.k8s.io/v1 · all namespaces"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={eventColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} onRowClick={setSelectedEvent} filterChips={<><FilterChip label="Namespace" value={nsFilter} onChange={setNsFilter} options={namespaces} /><FilterChip label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} /></>} footerText="Live · watching events.k8s.io/v1" viewMode={viewMode} onViewModeChange={setViewMode} />
+      <DataTable columns={eventColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} onRowClick={setSelectedEvent} filterChips={<><FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} /><FilterChip label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} /></>} footerText="Live · watching events.k8s.io/v1" viewMode={viewMode} onViewModeChange={setViewMode} />
       {selectedEvent && <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
     </div>
   );
