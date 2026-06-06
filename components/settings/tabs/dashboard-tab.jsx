@@ -2,6 +2,8 @@
 
 import React from "react";
 import { COST_DEFAULT_CONFIG as DEFAULT_CONFIG, CURRENCIES } from "@/lib/data";
+import { useClusterStore } from "@/stores/clusterStore";
+import { Switch } from "@/components/ui/switch";
 
 function loadConfig() {
   try {
@@ -29,6 +31,8 @@ export function DashboardTab() {
   const [config, setConfig] = React.useState(loadConfig);
   const [saved, setSaved] = React.useState(false);
   const [clearedRecs, setClearedRecs] = React.useState(false);
+  const developerMode = useClusterStore((s) => s.preferences.developerMode ?? false);
+  const setPreference = useClusterStore((s) => s.setPreference);
 
   const update = (key, value) => setConfig((c) => ({ ...c, [key]: value }));
 
@@ -225,6 +229,25 @@ export function DashboardTab() {
         >
           {clearedRecs ? "Cleared ✓" : "Reset all dismissed recommendations"}
         </button>
+      </section>
+
+      {/* Developer Mode */}
+      <section style={{ borderTop: "1px solid var(--kl-border)", paddingTop: 20 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 6, color: "var(--kl-text)" }}>
+          Developer Mode
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--kl-text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+          Show kubectl commands on resource listing pages. Click the terminal button next to any resource title to copy the equivalent kubectl command.
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <Switch
+            checked={developerMode}
+            onCheckedChange={(val) => setPreference({ developerMode: val })}
+          />
+          <span style={{ fontSize: 12.5, color: "var(--kl-text)" }}>
+            Enable developer mode
+          </span>
+        </label>
       </section>
     </div>
   );

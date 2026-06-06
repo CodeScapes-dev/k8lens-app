@@ -8,6 +8,7 @@ const DEFAULT_PREFERENCES = {
   dateFormat: "relative",
   defaultNamespaces: {},
   density: "comfortable",
+  developerMode: false,
   hiddenResources: {},
   hiddenSections: [],
   navStyle: "vertical",

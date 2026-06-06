@@ -2,15 +2,19 @@
 
 import React from "react";
 import { formatLabel } from "@/lib/k8s/utils";
+import { useClusterStore } from "@/stores/clusterStore";
+import { KubectlButton } from "@/components/kubectl-button";
 
-export function PageHeader({ title, count, subtitle, children }) {
+export function PageHeader({ title, count, subtitle, children, kubectlCmd }) {
+  const developerMode = useClusterStore((s) => s.preferences?.developerMode ?? false);
+
   return (
     <div style={{
       display: "flex", alignItems: "flex-end", justifyContent: "space-between",
       marginBottom: 18,
     }}>
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: -0.6, color: "var(--kl-text)" }}>
             {formatLabel(title)}
           </div>
@@ -24,6 +28,9 @@ export function PageHeader({ title, count, subtitle, children }) {
             }}>
               {count}
             </span>
+          )}
+          {developerMode && kubectlCmd && (
+            <KubectlButton command={kubectlCmd} />
           )}
         </div>
         {subtitle && (
