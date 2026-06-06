@@ -6,6 +6,8 @@ import {
   getCoreRowModel,
   flexRender,
 } from '@tanstack/react-table';
+import { CardsView } from './CardsView';
+import { ComingSoon } from './ComingSoon';
 import {
   Select,
   SelectContent,
@@ -253,17 +255,6 @@ function ColumnsDropdown({ table }) {
   );
 }
 
-// ─── Coming Soon ──────────────────────────────────────────────────────────────
-
-function ComingSoon({ view }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 12, background: 'var(--kl-surface)', border: '1px solid var(--kl-border)', borderRadius: 8 }}>
-      <div style={{ opacity: 0.3 }}>{VIEW_ICONS[view]}</div>
-      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--kl-text)' }}>{view} view</div>
-      <div style={{ fontSize: 12.5, color: 'var(--kl-text-muted)' }}>This feature is coming soon.</div>
-    </div>
-  );
-}
 
 // ─── Main DataTable ───────────────────────────────────────────────────────────
 
@@ -396,7 +387,24 @@ export function DataTable({
         )}
       </div>
 
-      {currentView !== 'Table' ? (
+      {currentView === 'Cards' ? (
+        <>
+          <CardsView table={table} loading={loading} onRowClick={onRowClick} />
+          <style>{`@keyframes kl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+            <div className="font-mono" style={{ fontSize: 11, color: 'var(--kl-text-muted)' }}>
+              {footerText || `${totalItems} total`}
+            </div>
+            {!loading && totalItems > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PagBtn disabled={page <= 1} onClick={() => onParamsChange?.({ ...listParams, page: page - 1 })}>←</PagBtn>
+                <span className="font-mono" style={{ fontSize: 11.5, color: 'var(--kl-text-muted)' }}>page {page} of {totalPages}</span>
+                <PagBtn disabled={page >= totalPages} onClick={() => onParamsChange?.({ ...listParams, page: page + 1 })}>→</PagBtn>
+              </div>
+            )}
+          </div>
+        </>
+      ) : currentView !== 'Table' ? (
         <ComingSoon view={currentView} />
       ) : (
         <>
@@ -491,6 +499,7 @@ export function DataTable({
       )}
     </>
   );
+
 }
 
 function PagBtn({ children, disabled, onClick }) {
