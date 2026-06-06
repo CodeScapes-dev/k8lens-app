@@ -66,9 +66,13 @@ export default function Page() {
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get replicationcontrollers -A"
+    : `kubectl get replicationcontrollers -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Replication Controllers" count={pagination?.totalItems} subtitle="v1 · core · all namespaces"><StatusSummary data={data} /></PageHeader>
+      <PageHeader title="Replication Controllers" count={pagination?.totalItems} subtitle="v1 · core · all namespaces" kubectlCmd={kubectlCmd} resourceKey="replicationcontrollers"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable columns={columns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching v1 · replicationcontrollers" resourceKind="ReplicationController" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/workloads/replicationcontrollers/${r.metadata.namespace}/${r.metadata.name}`)} />
     </div>

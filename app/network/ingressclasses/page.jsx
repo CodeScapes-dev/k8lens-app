@@ -12,9 +12,11 @@ export default function Page() {
   const [viewMode, setViewMode] = React.useState("Table");
   const { data, loading, refreshing, error, pagination } = useK8sResource("networking", "ingressclasses", { listParams });
 
+  const kubectlCmd = "kubectl get ingressclasses";
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Ingress Classes" count={pagination?.totalItems} subtitle="networking.k8s.io/v1 · cluster-scoped" />
+      <PageHeader title="Ingress Classes" count={pagination?.totalItems} subtitle="networking.k8s.io/v1 · cluster-scoped"  kubectlCmd={kubectlCmd} resourceKey="ingressclasses" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable
         columns={ingressClassColumns}

@@ -5,7 +5,7 @@ import { formatLabel } from "@/lib/k8s/utils";
 import { useClusterStore } from "@/stores/clusterStore";
 import { KubectlButton } from "@/components/kubectl-button";
 
-export function PageHeader({ title, count, subtitle, children, kubectlCmd }) {
+export function PageHeader({ title, count, subtitle, children, kubectlCmd, resourceKey }) {
   const developerMode = useClusterStore((s) => s.preferences?.developerMode ?? false);
 
   return (
@@ -30,7 +30,7 @@ export function PageHeader({ title, count, subtitle, children, kubectlCmd }) {
             </span>
           )}
           {developerMode && kubectlCmd && (
-            <KubectlButton command={kubectlCmd} />
+            <KubectlButton command={kubectlCmd} resourceKey={resourceKey} />
           )}
         </div>
         {subtitle && (

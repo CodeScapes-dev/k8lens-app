@@ -19,9 +19,13 @@ export default function Page() {
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get rolebindings -A"
+    : `kubectl get rolebindings -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Role Bindings" count={pagination?.totalItems} subtitle="rbac.authorization.k8s.io/v1 · all namespaces" />
+      <PageHeader title="Role Bindings" count={pagination?.totalItems} subtitle="rbac.authorization.k8s.io/v1 · all namespaces"  kubectlCmd={kubectlCmd} resourceKey="rolebindings" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable columns={roleBindingColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching rbac/v1 · rolebindings" resourceKind="RoleBinding" onRowClick={(r) => router.push(`/access-control/rolebindings/${r.metadata.namespace}/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
     </div>

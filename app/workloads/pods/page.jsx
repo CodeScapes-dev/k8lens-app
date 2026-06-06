@@ -145,12 +145,18 @@ export default function PodsPage() {
     </>
   );
 
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get pods -A"
+    : `kubectl get pods -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
       <PageHeader
         title="Pods"
         count={pagination?.totalItems}
         subtitle="v1 · core · all namespaces"
+        kubectlCmd={kubectlCmd}
+        resourceKey="pods"
       >
         {statusSummary}
       </PageHeader>

@@ -30,9 +30,13 @@ export default function Page() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get secrets -A"
+    : `kubectl get secrets -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Secrets" count={pagination?.totalItems} subtitle="v1 · core · all namespaces" />
+      <PageHeader title="Secrets" count={pagination?.totalItems} subtitle="v1 · core · all namespaces"  kubectlCmd={kubectlCmd} resourceKey="secrets" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable
         columns={secretColumns}

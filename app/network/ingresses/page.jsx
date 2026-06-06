@@ -21,9 +21,13 @@ export default function Page() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get ingresses -A"
+    : `kubectl get ingresses -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Ingresses" count={pagination?.totalItems} subtitle="networking.k8s.io/v1 · all namespaces" />
+      <PageHeader title="Ingresses" count={pagination?.totalItems} subtitle="networking.k8s.io/v1 · all namespaces"  kubectlCmd={kubectlCmd} resourceKey="ingresses" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable
         columns={ingressColumns}

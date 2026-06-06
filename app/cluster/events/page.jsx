@@ -43,9 +43,13 @@ export default function Page() {
     const ns = [...new Set(allData.map((r) => r.metadata?.namespace).filter(Boolean))].sort();
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
   }, [allData]);
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get events -A"
+    : `kubectl get events -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Events" count={pagination?.totalItems} subtitle="events.k8s.io/v1 · all namespaces"><StatusSummary data={data} /></PageHeader>
+      <PageHeader title="Events" count={pagination?.totalItems} subtitle="events.k8s.io/v1 · all namespaces" kubectlCmd={kubectlCmd} resourceKey="events"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable columns={eventColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} onRowClick={setSelectedEvent} filterChips={<><FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} /><FilterChip label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} /></>} footerText="Live · watching events.k8s.io/v1" resourceKind="Event" viewMode={viewMode} onViewModeChange={setViewMode} />
       {selectedEvent && <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />}

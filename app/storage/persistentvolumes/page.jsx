@@ -39,9 +39,11 @@ export default function Page() {
   const [viewMode, setViewMode] = React.useState("Table");
   const [statusFilter, setStatusFilter] = React.useState("any");
   const { data, loading, refreshing, error, pagination } = useK8sResource("core", "persistentvolumes", { listParams });
+  const kubectlCmd = "kubectl get persistentvolumes";
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Persistent Volumes" count={pagination?.totalItems} subtitle="v1 · core · cluster-scoped"><StatusSummary data={data} /></PageHeader>
+      <PageHeader title="Persistent Volumes" count={pagination?.totalItems} subtitle="v1 · core · cluster-scoped" kubectlCmd={kubectlCmd} resourceKey="persistentvolumes"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable columns={pvColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Status" value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />} footerText="Live · watching v1 · persistentvolumes" onRowClick={(r) => router.push(`/storage/persistentvolumes/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
     </div>

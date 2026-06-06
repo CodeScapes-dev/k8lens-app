@@ -11,9 +11,11 @@ export default function Page() {
   const [listParams, setListParams] = React.useState({ page: 1, limit: 5, search: "", sortBy: "name", sortOrder: "asc" });
   const [viewMode, setViewMode] = React.useState("Table");
   const { data, loading, refreshing, error, pagination } = useK8sResource("storage", "storageclasses", { listParams });
+  const kubectlCmd = "kubectl get storageclasses";
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Storage Classes" count={pagination?.totalItems} subtitle="storage.k8s.io/v1 · cluster-scoped" />
+      <PageHeader title="Storage Classes" count={pagination?.totalItems} subtitle="storage.k8s.io/v1 · cluster-scoped"  kubectlCmd={kubectlCmd} resourceKey="storageclasses" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
       <DataTable columns={storageClassColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} footerText="Live · watching storage.k8s.io/v1 · storageclasses" onRowClick={(r) => router.push(`/storage/storageclasses/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
     </div>

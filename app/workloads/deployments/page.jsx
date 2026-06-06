@@ -84,9 +84,13 @@ export default function Page() {
     return [{ value: "all", label: "All namespaces" }, ...ns.map((n) => ({ value: n, label: n }))];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+  const kubectlCmd = nsFilter === "all"
+    ? "kubectl get deployments -A"
+    : `kubectl get deployments -n ${nsFilter}`;
+
   return (
     <div className="px-4 sm:px-6 py-5">
-      <PageHeader title="Deployments" count={pagination?.totalItems} subtitle="apps/v1 · all namespaces">
+      <PageHeader title="Deployments" count={pagination?.totalItems} subtitle="apps/v1 · all namespaces" kubectlCmd={kubectlCmd} resourceKey="deployments">
         <StatusSummary data={data} />
       </PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
