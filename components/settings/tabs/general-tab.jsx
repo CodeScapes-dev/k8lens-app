@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { REFRESH_OPTIONS, DATE_OPTIONS, TIMEZONES } from "@/lib/data";
+import { useMetrics } from "@/hooks/use-metrics";
 
 function SettingSelect({ options, storeValue, onChange, placeholder, className }) {
   const currentValue = String(options.find((o) => o.value == storeValue)?.value ?? "");
@@ -69,6 +70,7 @@ function SettingRow({ label, description, tooltip, children }) {
 
 export function GeneralTab() {
   const { preferences, setPreference } = useClusterStore();
+  const { available: metricsAvailable, loading: metricsLoading } = useMetrics("/api/k8s/metrics/detect");
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,6 +164,40 @@ export function GeneralTab() {
                 : "Read-only mode is OFF — click to protect production clusters"}
             </TooltipContent>
           </Tooltip>
+        </SettingRow>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h3 className="text-base font-semibold mb-0.5">Integrations</h3>
+        <p className="text-sm text-muted-foreground">
+          Optional Kubernetes components detected in the active cluster.
+        </p>
+      </div>
+
+      <Separator />
+
+      <div className="flex flex-col gap-5">
+        <SettingRow
+          label="Metrics Server"
+          description="Provides live CPU and memory usage for nodes and pods."
+        >
+          <div className="flex items-center gap-1.5">
+            {metricsLoading || metricsAvailable === null ? (
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            ) : metricsAvailable ? (
+              <>
+                <CheckCircle2 className="size-4 text-green-500" />
+                <span className="text-xs text-green-600 dark:text-green-400">Available</span>
+              </>
+            ) : (
+              <>
+                <XCircle className="size-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Not installed</span>
+              </>
+            )}
+          </div>
         </SettingRow>
       </div>
     </div>

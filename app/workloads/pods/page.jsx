@@ -7,6 +7,11 @@ import { DataTable, FilterChip } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { podColumns } from "@/lib/k8s/columns/core";
 import { getPodStatus } from "@/lib/k8s/utils";
+import { useMetrics } from "@/hooks/use-metrics";
+import { fmtCores, fmtMilliStr, fmtGB, fmtMB } from "@/lib/k8s/metrics-utils";
+import { MetricValue } from "@/components/kl/MetricValue";
+
+const dash = <span style={{ color: "var(--kl-text-faint)" }}>—</span>;
 
 function useElapsed() {
   const [secs, setSecs] = React.useState(0);
@@ -39,8 +44,44 @@ export default function PodsPage() {
   const [nodeFilter, setNodeFilter] = React.useState("any");
 
   const { data, loading, refreshing, error, pagination, refresh } = useK8sResource("core", "pods", { listParams });
+  const { data: metricsData } = useMetrics(`/api/k8s/metrics/pods${nsFilter !== "all" ? `?namespace=${nsFilter}` : ""}`);
   const elapsed = useElapsed();
   const counts = computePodCounts(data);
+
+  const metricsMap = React.useMemo(() => {
+    const m = {};
+    for (const p of (metricsData ?? [])) m[`${p.namespace}/${p.name}`] = p;
+    return m;
+  }, [metricsData]);
+
+  const metricsColumns = React.useMemo(() => [
+    {
+      id: "cpu",
+      header: "CPU",
+      accessorFn: (row) => metricsMap[`${row.metadata?.namespace}/${row.metadata?.name}`]?.cpu ?? null,
+      meta: { mono: true, muted: true, w: "0.7fr" },
+      cell: (info) => {
+        const v = info.getValue();
+        return v != null
+          ? <MetricValue display={fmtCores(v)} hover={fmtMilliStr(v)} className="font-mono text-[var(--kl-text-muted)]" />
+          : dash;
+      },
+    },
+    {
+      id: "memory",
+      header: "Memory",
+      accessorFn: (row) => metricsMap[`${row.metadata?.namespace}/${row.metadata?.name}`]?.memory ?? null,
+      meta: { mono: true, muted: true, w: "0.9fr" },
+      cell: (info) => {
+        const v = info.getValue();
+        return v != null
+          ? <MetricValue display={fmtGB(v)} hover={fmtMB(v)} className="font-mono text-[var(--kl-text-muted)]" />
+          : dash;
+      },
+    },
+  ], [metricsMap]);
+
+  const columns = React.useMemo(() => [...podColumns, ...metricsColumns], [metricsColumns]);
 
   // Derive unique namespaces/nodes from current page for filter options
   const namespaces = React.useMemo(() => {
@@ -122,7 +163,7 @@ export default function PodsPage() {
       )}
 
       <DataTable
-        columns={podColumns}
+        columns={columns}
         data={data}
         loading={loading}
         refreshing={refreshing}

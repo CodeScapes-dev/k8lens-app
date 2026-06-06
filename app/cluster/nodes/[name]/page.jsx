@@ -2,12 +2,13 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLStatus } from "@/components/kl/Status";
 import { KLBadge } from "@/components/kl/Badge";
 import { calculateAge } from "@/lib/k8s/utils";
+import { parseAllocCpu, parseAllocMem, fmtCores, fmtGB } from "@/lib/k8s/metrics-utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
 import { SharedMetadataTab } from "@/components/shared-detail-tabs/SharedMetadataTab";
 import { BlastRadiusContent } from "@/components/blast-radius/BlastRadiusContent";
@@ -15,12 +16,14 @@ import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { OverviewTab } from "@/components/node-detail/tabs/OverviewTab";
 import { PodsTab } from "@/components/node-detail/tabs/PodsTab";
+import { MetricsTab } from "@/components/node-detail/tabs/MetricsTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Metrics", icon: ActivityIcon },
   { id: "Pods", icon: ServerIcon },
   { id: "Blast Radius", icon: ShieldAlertIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -79,8 +82,8 @@ export default function NodeDetailPage() {
                 <div className="grid grid-cols-5 rounded-xl border border-border overflow-hidden divide-x divide-border min-w-[320px] sm:min-w-0">
                   <QuickStat label="Status" value={isReady ? "Ready" : "Not Ready"} />
                   <QuickStat label="Pods" value={pods.length} />
-                  <QuickStat label="CPU" value={allocatable.cpu ?? "—"} />
-                  <QuickStat label="Memory" value={allocatable.memory ?? "—"} />
+                  <QuickStat label="CPU" value={allocatable.cpu ? fmtCores(parseAllocCpu(allocatable.cpu)) : "—"} />
+                  <QuickStat label="Memory" value={allocatable.memory ? fmtGB(parseAllocMem(allocatable.memory)) : "—"} />
                   <QuickStat label="Age" value={node?.metadata?.creationTimestamp ? calculateAge(node.metadata.creationTimestamp) : "—"} />
                 </div>
               </div>
@@ -106,6 +109,7 @@ export default function NodeDetailPage() {
 
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab node={node} pods={pods} />}
+        {activeTab === "Metrics" && <MetricsTab nodeName={name} allocatable={allocatable} />}
         {activeTab === "Pods" && <PodsTab pods={pods} />}
         {activeTab === "Blast Radius" && <BlastRadiusContent resourceType="node" resource={{ ...node, pods }} namespace={null} />}
         {activeTab === "Dependencies" && <DependencyGraph resourceType="node" resource={node} />}
