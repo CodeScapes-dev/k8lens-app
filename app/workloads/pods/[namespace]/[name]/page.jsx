@@ -4,7 +4,7 @@ import React from "react";
 import { useParams } from "next/navigation";
 import {
   LayoutDashboardIcon, NetworkIcon, CpuIcon, ScrollTextIcon,
-  BellIcon, TagIcon, ShareIcon,
+  BellIcon, TagIcon, ShareIcon, ActivityIcon,
 } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge, getPodStatus, getPodRestarts, parseK8sResourceValue } from "@/lib/k8s/utils";
@@ -18,10 +18,12 @@ import { LogsTab } from "@/components/pod-detail/tabs/LogsTab";
 import { EventsTab } from "@/components/pod-detail/tabs/EventsTab";
 import { MetadataTab } from "@/components/pod-detail/tabs/MetadataTab";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
+import { PodMetricsTab } from "@/components/pod-detail/tabs/MetricsTab";
 import { QuickStat } from "@/components/detail/helpers";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
+  { id: "Metrics",      icon: ActivityIcon },
   { id: "Networking",   icon: NetworkIcon },
   { id: "Resources",    icon: CpuIcon },
   { id: "Logs",         icon: ScrollTextIcon, live: true },
@@ -145,6 +147,7 @@ export default function PodDetailPage() {
       {/* Tab content */}
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview"     && <OverviewTab pod={pod} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Metrics"      && <PodMetricsTab pod={pod} namespace={namespace} name={name} />}
         {activeTab === "Networking"   && <NetworkingTab pod={pod} />}
         {activeTab === "Resources"    && <ResourcesTab pod={pod} />}
         {activeTab === "Logs"         && <LogsTab pod={pod} />}
