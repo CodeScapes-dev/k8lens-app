@@ -34,7 +34,7 @@ export default function Page() {
         listParams={listParams}
         onParamsChange={setListParams}
         filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />}
-        footerText="Live · watching networking.k8s.io/v1 · ingresses"
+        footerText="Live · watching networking.k8s.io/v1 · ingresses" resourceKind="Ingress"
         onRowClick={(r) => router.push(`/network/ingresses/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

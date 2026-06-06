@@ -23,7 +23,7 @@ export default function Page() {
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="Roles" count={pagination?.totalItems} subtitle="rbac.authorization.k8s.io/v1 · all namespaces" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={roleColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching rbac/v1 · roles" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/access-control/roles/${r.metadata.namespace}/${r.metadata.name}`)} />
+      <DataTable columns={roleColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching rbac/v1 · roles" resourceKind="Role" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/access-control/roles/${r.metadata.namespace}/${r.metadata.name}`)} />
     </div>
   );
 }

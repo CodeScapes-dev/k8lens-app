@@ -174,7 +174,7 @@ export default function PodsPage() {
         listParams={listParams}
         onParamsChange={setListParams}
         filterChips={filterChips}
-        footerText={`Live · watching v1/pods · ${elapsed}`}
+        footerText={`Live · watching v1/pods · ${elapsed}`} resourceKind="Pod"
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onRowClick={(pod) => router.push(`/workloads/pods/${pod.metadata.namespace}/${pod.metadata.name}`)}

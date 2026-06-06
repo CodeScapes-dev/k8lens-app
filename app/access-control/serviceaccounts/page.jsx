@@ -23,7 +23,7 @@ export default function Page() {
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="Service Accounts" count={pagination?.totalItems} subtitle="v1 · core · all namespaces" />
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={serviceAccountColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching v1 · serviceaccounts" onRowClick={(r) => router.push(`/access-control/serviceaccounts/${r.metadata.namespace}/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
+      <DataTable columns={serviceAccountColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching v1 · serviceaccounts" resourceKind="ServiceAccount" onRowClick={(r) => router.push(`/access-control/serviceaccounts/${r.metadata.namespace}/${r.metadata.name}`)} viewMode={viewMode} onViewModeChange={setViewMode} />
     </div>
   );
 }

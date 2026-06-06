@@ -48,7 +48,7 @@ export default function Page() {
             <FilterChip label="Type" value={typeFilter} onChange={setTypeFilter} options={SECRET_TYPE_OPTIONS} />
           </>
         }
-        footerText="Live · watching v1 · secrets"
+        footerText="Live · watching v1 · secrets" resourceKind="Secret"
         onRowClick={(r) => router.push(`/configuration/secrets/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

@@ -34,7 +34,7 @@ export default function Page() {
         listParams={listParams}
         onParamsChange={setListParams}
         filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />}
-        footerText="Live · watching networking.k8s.io/v1 · networkpolicies"
+        footerText="Live · watching networking.k8s.io/v1 · networkpolicies" resourceKind="NetworkPolicy"
         onRowClick={(r) => router.push(`/network/networkpolicies/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

@@ -34,7 +34,7 @@ export default function Page() {
         listParams={listParams}
         onParamsChange={setListParams}
         filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />}
-        footerText="Live · watching v1 · endpoints"
+        footerText="Live · watching v1 · endpoints" resourceKind="Endpoints"
         onRowClick={(r) => router.push(`/network/endpoints/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

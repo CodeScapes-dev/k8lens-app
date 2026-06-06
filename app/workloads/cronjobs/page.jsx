@@ -32,7 +32,7 @@ export default function Page() {
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="CronJobs" count={pagination?.totalItems} subtitle="batch/v1 · all namespaces"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={cronJobColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching batch/v1 · cronjobs" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/workloads/cronjobs/${r.metadata.namespace}/${r.metadata.name}`)} />
+      <DataTable columns={cronJobColumns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching batch/v1 · cronjobs" resourceKind="CronJob" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/workloads/cronjobs/${r.metadata.namespace}/${r.metadata.name}`)} />
     </div>
   );
 }

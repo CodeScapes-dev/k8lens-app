@@ -34,7 +34,7 @@ export default function Page() {
         listParams={listParams}
         onParamsChange={setListParams}
         filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />}
-        footerText="Live · watching v1 · resourcequotas"
+        footerText="Live · watching v1 · resourcequotas" resourceKind="ResourceQuota"
         onRowClick={(r) => router.push(`/configuration/resourcequotas/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

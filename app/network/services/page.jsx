@@ -72,7 +72,7 @@ export default function Page() {
             <FilterChip label="Type" value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
           </>
         }
-        footerText="Live · watching v1 · services"
+        footerText="Live · watching v1 · services" resourceKind="Service"
         onRowClick={(r) => router.push(`/network/services/${r.metadata.namespace}/${r.metadata.name}`)}
         viewMode={viewMode}
         onViewModeChange={setViewMode}

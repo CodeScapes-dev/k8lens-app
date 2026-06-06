@@ -90,7 +90,7 @@ export default function Page() {
         <StatusSummary data={data} />
       </PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={columns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching apps/v1 · deployments" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(dep) => router.push(`/workloads/deployments/${dep.metadata.namespace}/${dep.metadata.name}`)} />
+      <DataTable columns={columns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} filterChips={<FilterChip label="Namespace" value={nsFilter} onChange={(v) => { setNsFilter(v); setListParams((p) => ({ ...p, page: 1 })); }} options={namespaces} />} footerText="Live · watching apps/v1 · deployments" resourceKind="Deployment" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(dep) => router.push(`/workloads/deployments/${dep.metadata.namespace}/${dep.metadata.name}`)} />
     </div>
   );
 }

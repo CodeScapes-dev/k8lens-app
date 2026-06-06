@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table';
 import { CardsView } from './CardsView';
 import { ComingSoon } from './ComingSoon';
+import { GraphView } from './GraphView';
 import {
   Select,
   SelectContent,
@@ -271,6 +272,7 @@ export function DataTable({
   viewMode,
   onViewModeChange,
   onRowClick,
+  resourceKind,
 }) {
   const [searchDraft, setSearchDraft] = React.useState(listParams.search || '');
   const [columnVisibility, setColumnVisibility] = React.useState({});
@@ -404,6 +406,8 @@ export function DataTable({
             )}
           </div>
         </>
+      ) : currentView === 'Graph' ? (
+        <GraphView data={data} resourceKind={resourceKind} loading={loading} />
       ) : currentView !== 'Table' ? (
         <ComingSoon view={currentView} />
       ) : (

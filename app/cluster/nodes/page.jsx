@@ -115,7 +115,7 @@ export default function Page() {
     <div className="px-4 sm:px-6 py-5">
       <PageHeader title="Nodes" count={pagination?.totalItems} subtitle="v1 · core · cluster-scoped"><StatusSummary data={data} /></PageHeader>
       {error && <div style={{ marginBottom: 12, padding: "10px 14px", background: "var(--kl-err-tint)", border: "1px solid var(--kl-err)", borderRadius: 7, fontSize: 12.5, color: "var(--kl-err)" }}>{error}</div>}
-      <DataTable columns={columns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} footerText="Live · watching v1 · nodes" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/cluster/nodes/${r.metadata.name}`)} />
+      <DataTable columns={columns} data={data} loading={loading} refreshing={refreshing} pagination={pagination} listParams={listParams} onParamsChange={setListParams} footerText="Live · watching v1 · nodes" resourceKind="Node" viewMode={viewMode} onViewModeChange={setViewMode} onRowClick={(r) => router.push(`/cluster/nodes/${r.metadata.name}`)} />
     </div>
   );
 }
