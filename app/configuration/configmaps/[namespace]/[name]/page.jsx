@@ -52,7 +52,7 @@ export default function ConfigMapDetailPage() {
           <>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="min-w-0 flex-1 space-y-2">
-                <span className="font-mono text-xs text-muted-foreground">ConfigMap · v1 · {namespace}</span>
+                <span className="font-mono text-xs text-muted-foreground">Config Map · v1 · {namespace}</span>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(labels).slice(0, 6).map(([k, v]) => (

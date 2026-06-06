@@ -66,7 +66,7 @@ export default function StatefulSetDetailPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   {ss && <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${replicaStatusColor(desired, ready)}`} />}
-                  <span className="font-mono text-xs text-muted-foreground">StatefulSet · apps/v1 · {namespace}</span>
+                  <span className="font-mono text-xs text-muted-foreground">Stateful Set · apps/v1 · {namespace}</span>
                   {ss && <HealthBadge resourceType="statefulset" data={data} />}
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>

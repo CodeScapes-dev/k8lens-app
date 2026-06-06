@@ -72,7 +72,7 @@ export default function ClusterRoleDetailPage() {
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-xs text-muted-foreground">ClusterRole · rbac.authorization.k8s.io/v1 · cluster-scoped</span>
+                  <span className="font-mono text-xs text-muted-foreground">Cluster Role · rbac.authorization.k8s.io/v1 · cluster-scoped</span>
                   {clusterRole && <HealthBadge resourceType="clusterrole" data={data} />}
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>

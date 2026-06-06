@@ -47,7 +47,7 @@ export default function ResourceQuotaDetailPage() {
           <>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="min-w-0 flex-1 space-y-2">
-                <span className="font-mono text-xs text-muted-foreground">ResourceQuota · v1 · {namespace}</span>
+                <span className="font-mono text-xs text-muted-foreground">Resource Quota · v1 · {namespace}</span>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
               </div>
               <div className="overflow-x-auto w-full sm:w-auto shrink-0" style={{ scrollbarWidth: "none" }}>

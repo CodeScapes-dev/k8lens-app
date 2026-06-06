@@ -13,6 +13,7 @@ import dagre from "dagre";
 import { useK8sResource } from "@/hooks/use-k8s";
 import { useClusterStore } from "@/stores/clusterStore";
 import { KIND_COLOR, kindRoute } from "@/lib/k8s/kind-config";
+import { formatLabel } from "@/lib/k8s/utils";
 
 const useStore = useClusterStore;
 
@@ -46,7 +47,7 @@ function DepNode({ data, selected }) {
       <Handle type="target" position={Position.Left}  style={{ background: color, width: 6, height: 6, left: -4 }} />
       <Handle type="source" position={Position.Right} style={{ background: color, width: 6, height: 6, right: -4 }} />
       <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, color }}>
-        {kind}
+        {formatLabel(kind)}
       </span>
       <span
         title={name}

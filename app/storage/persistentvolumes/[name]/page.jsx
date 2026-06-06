@@ -52,7 +52,7 @@ export default function PVDetailPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   {pv && <KLStatus kind={pvStatusKind(phase)} dotOnly />}
-                  <span className="font-mono text-xs text-muted-foreground">PersistentVolume · v1 · cluster-scoped</span>
+                  <span className="font-mono text-xs text-muted-foreground">Persistent Volume · v1 · cluster-scoped</span>
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                 <div className="flex flex-wrap gap-1.5">

@@ -56,7 +56,7 @@ export default function PVCDetailPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   {pvc && <KLStatus kind={pvcStatusKind(phase)} dotOnly />}
-                  <span className="font-mono text-xs text-muted-foreground">PersistentVolumeClaim · v1 · {namespace}</span>
+                  <span className="font-mono text-xs text-muted-foreground">Persistent Volume Claim · v1 · {namespace}</span>
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                 <div className="flex flex-wrap gap-1.5">

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { formatLabel } from "@/lib/k8s/utils";
 
 export function PageHeader({ title, count, subtitle, children }) {
   return (
@@ -11,7 +12,7 @@ export function PageHeader({ title, count, subtitle, children }) {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: -0.6, color: "var(--kl-text)" }}>
-            {title}
+            {formatLabel(title)}
           </div>
           {count != null && (
             <span style={{

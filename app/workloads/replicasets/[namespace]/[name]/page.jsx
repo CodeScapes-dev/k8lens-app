@@ -62,7 +62,7 @@ export default function ReplicaSetDetailPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2">
                   {replicaSet && <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${replicaStatusColor(desired, ready)}`} />}
-                  <span className="font-mono text-xs text-muted-foreground">ReplicaSet · apps/v1 · {namespace}</span>
+                  <span className="font-mono text-xs text-muted-foreground">Replica Set · apps/v1 · {namespace}</span>
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                 <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>

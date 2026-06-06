@@ -1,3 +1,5 @@
+import { formatLabel } from '@/lib/k8s/utils';
+
 export function Panel({ title, subtitle, children, rowAction, style }) {
   return (
     <div
@@ -19,7 +21,7 @@ export function Panel({ title, subtitle, children, rowAction, style }) {
       >
         <div>
           <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, color: 'var(--kl-text)' }}>
-            {title}
+            {formatLabel(title)}
           </div>
           {subtitle && (
             <div

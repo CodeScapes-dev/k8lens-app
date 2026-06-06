@@ -54,7 +54,7 @@ export default function CRDDetailPage() {
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <KLStatus kind={established?.status === "True" ? "ok" : "warn"} dotOnly />
-                  <span className="font-mono text-xs text-muted-foreground">CustomResourceDefinition · apiextensions/v1 · cluster-scoped</span>
+                  <span className="font-mono text-xs text-muted-foreground">Custom Resource Definition · apiextensions/v1 · cluster-scoped</span>
                 </div>
                 <h1 className="font-mono text-xl sm:text-2xl font-semibold tracking-tight break-all">{name}</h1>
                 <div className="flex flex-wrap gap-1.5">
