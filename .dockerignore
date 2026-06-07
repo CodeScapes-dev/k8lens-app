@@ -1,0 +1,43 @@
+# dependencies
+node_modules
+.pnpm-store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# next.js build output (rebuilt in image)
+.next
+out
+build
+
+# version control / editor / OS
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+*.pem
+
+# env files — never bake secrets into the image; pass at runtime
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# docs / project meta (not needed at runtime)
+README.md
+AGENTS.md
+CLAUDE.md
+METRICS_PLAN.md
+docs
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+coverage
+Dockerfile
+.dockerignore
