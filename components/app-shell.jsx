@@ -44,7 +44,11 @@ function getBreadcrumbs(pathname) {
     const listItem = section.items.find((i) => i.href === listHref);
     if (listItem) {
       const resourceName = pathname.split("/").at(-1);
-      return { section: section.label, item: listItem.label, detail: resourceName };
+      return {
+        section: section.label,
+        item: listItem.label,
+        detail: resourceName,
+      };
     }
   }
   return null;
@@ -56,7 +60,7 @@ function HeaderBreadcrumbs({ pathname }) {
   if (!crumbs) {
     return (
       <span className="text-sm font-semibold tracking-tight flex-1">
-        KuLens
+        K8Lens
       </span>
     );
   }
@@ -148,11 +152,11 @@ export function AppShell({ children }) {
   React.useEffect(() => {
     const crumbs = getBreadcrumbs(pathname);
     if (!crumbs) {
-      document.title = "KuLens — Kubernetes Dashboard";
+      document.title = "K8Lens — Kubernetes Dashboard";
     } else if (crumbs.detail) {
-      document.title = `${crumbs.detail} · ${crumbs.item} — KuLens`;
+      document.title = `${crumbs.detail} · ${crumbs.item} — K8Lens`;
     } else {
-      document.title = `${crumbs.item} — KuLens`;
+      document.title = `${crumbs.item} — K8Lens`;
     }
   }, [pathname]);
 
@@ -192,13 +196,22 @@ export function AppShell({ children }) {
     });
     const tick = setInterval(() => {
       setCountdown((c) => {
-        if (c <= 1) { setProgressKey((k) => k + 1); return autoRefresh; }
+        if (c <= 1) {
+          setProgressKey((k) => k + 1);
+          return autoRefresh;
+        }
         return c - 1;
       });
     }, 1000);
-    const onRefreshed = () => { setCountdown(autoRefresh); setProgressKey((k) => k + 1); };
+    const onRefreshed = () => {
+      setCountdown(autoRefresh);
+      setProgressKey((k) => k + 1);
+    };
     window.addEventListener("kl:refreshed", onRefreshed);
-    return () => { clearInterval(tick); window.removeEventListener("kl:refreshed", onRefreshed); };
+    return () => {
+      clearInterval(tick);
+      window.removeEventListener("kl:refreshed", onRefreshed);
+    };
   }, [autoRefresh]);
 
   if (!hasHydrated) return null;
@@ -218,7 +231,10 @@ export function AppShell({ children }) {
 
       <SidebarInset>
         <style>{`@keyframes kl-progress { from { width: 100%; } to { width: 0%; } }`}</style>
-        <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2 shrink-0 h-[52px] rounded-t-xl" style={{ position: "relative" }}>
+        <header
+          className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2 shrink-0 h-[52px] rounded-t-xl"
+          style={{ position: "relative" }}
+        >
           <Tooltip delayDuration={400}>
             <TooltipTrigger asChild>
               <SidebarTrigger className="text-foreground" />
@@ -259,7 +275,7 @@ export function AppShell({ children }) {
                 size="sm"
                 className={cn(
                   "shrink-0 gap-1.5 px-2 h-8 text-xs text-foreground",
-                  autoRefresh > 0 && "text-foreground"
+                  autoRefresh > 0 && "text-foreground",
                 )}
                 onClick={() => openSettings("general")}
               >
@@ -285,8 +301,12 @@ export function AppShell({ children }) {
             <div
               key={progressKey}
               style={{
-                position: "absolute", bottom: 0, left: 0, height: 2,
-                background: "var(--kl-accent)", opacity: 0.45,
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                height: 2,
+                background: "var(--kl-accent)",
+                opacity: 0.45,
                 animationName: "kl-progress",
                 animationDuration: `${autoRefresh}s`,
                 animationTimingFunction: "linear",
@@ -311,7 +331,9 @@ export function AppShell({ children }) {
           </Tooltip>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          {children}
+        </main>
       </SidebarInset>
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
