@@ -3,7 +3,6 @@
 import React from "react";
 import {
   ChevronRightIcon,
-  HelpCircleIcon,
   Settings2Icon,
   ServerIcon,
   PlusIcon,
@@ -271,15 +270,6 @@ export function NavDrawer({ onAddCluster, onOpenSettings }) {
 
       <SidebarFooter className="px-2 py-2 border-t border-sidebar-border">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => router.push("/help")}
-              className="gap-2 text-muted-foreground"
-            >
-              <HelpCircleIcon className="size-4" />
-              <span>Help & FAQ</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => onOpenSettings?.("general")}
