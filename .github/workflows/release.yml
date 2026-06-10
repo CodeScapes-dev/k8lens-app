@@ -1,0 +1,173 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'development'
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine bump type from PR labels
+        id: bump_type
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          if echo "$LABELS" | grep -q '"major"'; then
+            echo "type=major" >> "$GITHUB_OUTPUT"
+          elif echo "$LABELS" | grep -q '"minor"'; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version in package.json
+        id: bump
+        run: |
+          BUMP_TYPE="${{ steps.bump_type.outputs.type }}"
+          OLD_VERSION=$(node -p "require('./package.json').version")
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD_VERSION"
+          case "$BUMP_TYPE" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          TAG="v$NEW_VERSION"
+
+          # Write new version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"             >> "$GITHUB_OUTPUT"
+          echo "Bumped $OLD_VERSION → $NEW_VERSION ($BUMP_TYPE)"
+
+      - name: Commit version bump
+        run: |
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push origin main
+
+      - name: Build changelog
+        id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.bump.outputs.tag }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          # Collect commits by conventional-commit type
+          get_section() {
+            local pattern="$1"
+            git log $RANGE --pretty=format:"- %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" \
+              | grep -E "^- $pattern" || true
+          }
+
+          FEATURES=$(get_section "feat[(:!]")
+          FIXES=$(get_section "fix[(:!]")
+          CHORES=$(get_section "chore[(:!]")
+          REFACTOR=$(get_section "refactor[(:!]")
+          DOCS=$(get_section "docs[(:!]")
+          OTHER=$(git log $RANGE --pretty=format:"- %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" \
+            | grep -vE "^- (feat|fix|chore|refactor|docs|ci|test|build|style|perf)[(:!]" || true)
+
+          BODY="## What's Changed"$'\n'
+
+          if [ -n "$FEATURES" ]; then
+            BODY="$BODY"$'\n'"### Features"$'\n'"$FEATURES"$'\n'
+          fi
+          if [ -n "$FIXES" ]; then
+            BODY="$BODY"$'\n'"### Bug Fixes"$'\n'"$FIXES"$'\n'
+          fi
+          if [ -n "$REFACTOR" ]; then
+            BODY="$BODY"$'\n'"### Refactoring"$'\n'"$REFACTOR"$'\n'
+          fi
+          if [ -n "$DOCS" ]; then
+            BODY="$BODY"$'\n'"### Documentation"$'\n'"$DOCS"$'\n'
+          fi
+          if [ -n "$CHORES" ]; then
+            BODY="$BODY"$'\n'"### Chores"$'\n'"$CHORES"$'\n'
+          fi
+          if [ -n "$OTHER" ]; then
+            BODY="$BODY"$'\n'"### Other Changes"$'\n'"$OTHER"$'\n'
+          fi
+
+          if [ -n "$PREV_TAG" ]; then
+            BODY="$BODY"$'\n'"**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$TAG"
+          fi
+
+          # Save multiline string for next step
+          {
+            echo "body<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.bump.outputs.tag }}
+          git push origin ${{ steps.bump.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: ${{ steps.bump.outputs.tag }}
+          body: ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false
+
+  docker:
+    needs: release
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+      tag: ${{ needs.release.outputs.tag }}
+    secrets: inherit
