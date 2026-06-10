@@ -416,31 +416,29 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
 
   return (
     <div style={{ padding: '14px 20px 28px', maxWidth: 1600, margin: '0 auto' }}>
-      <style>{`@keyframes klPulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.6);opacity:0}}`}</style>
-
       {/* ── Page header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+      <div className="flex items-center justify-between gap-3 mb-[18px]">
+        <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1 min-w-0">
           <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.5, margin: 0, color: 'var(--kl-text)' }}>Cluster overview</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div className="flex items-center gap-[7px]">
             <LivePulse color="var(--kl-ok)" />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--kl-text-2)' }}>
               {clusterDisplayName} · {clusterVersion} · {data.namespaces.length} ns
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-text-faint)' }}>Synced {synced(syncedAt)} · auto-refresh 10s</span>
+        <div className="flex items-center gap-[10px] shrink-0">
+          <span className="hidden sm:inline" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-text-faint)' }}>Synced {synced(syncedAt)} · auto-refresh 10s</span>
           <button onClick={onRefresh} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', border: '1px solid var(--kl-border)', background: 'var(--kl-surface)', borderRadius: 8, color: 'var(--kl-text-2)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer' }}>
             <RefreshCw size={12} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="flex flex-col gap-[14px]">
         {/* ── Hero Bento ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px,360px) 1fr minmax(260px,340px)', gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(300px,360px)_1fr_minmax(260px,340px)] gap-[14px]">
           {/* Cluster Health */}
           <Card padding={12} style={{ minHeight: 160 }}>
             <CardHeader icon={I.health} title="Cluster health" action={<KLBadge tone={scoreTone}>{scoreLabel}</KLBadge>} />
@@ -506,7 +504,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
         </div>
 
         {/* ── KPI Strip ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-[14px]">
           <KpiCard label="Pods" value={data.pods.length} sub={`${podPhases.Running || 0} running`}
             accent={<div style={{ display: 'flex', gap: 4 }}>
               <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--kl-ok)' }} />
@@ -567,7 +565,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--kl-text-faint)' }}>· all namespaces</span>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
             {topoItems.map((t, i, arr) => (
               <div key={t.l} style={{ padding: '12px 14px', borderRight: i < arr.length - 1 ? '1px solid var(--kl-border)' : 'none', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
@@ -582,7 +580,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
         </Card>
 
         {/* ── Bottom 2-column ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 14 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-[14px]">
           {/* Recent Events */}
           <Card padding={0}>
             <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--kl-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -625,6 +623,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
               </div>
             ) : (
               <>
+                <div className="kl-helm-table">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
                   <thead>
                     <tr style={{ color: 'var(--kl-text-muted)' }}>
@@ -658,6 +657,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
                     ))}
                   </tbody>
                 </table>
+                </div>
                 {helmOverflow > 0 && (
                   <div style={{ padding: '10px 20px', borderTop: '1px solid var(--kl-border)' }}>
                     <Link href="/advanced/helm" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--kl-accent)' }}>+{helmOverflow} more release{helmOverflow !== 1 ? 's' : ''}</Link>
