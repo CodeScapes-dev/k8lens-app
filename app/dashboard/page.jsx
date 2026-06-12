@@ -15,6 +15,7 @@ import {
   AlertCircle,
   XCircle,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 import { useClusterStore } from "@/stores/clusterStore";
 import { useDashboardData } from "@/hooks/use-dashboard";
@@ -31,9 +32,13 @@ import { calculateClusterHealthScore } from "@/lib/k8s/cluster-health-score";
 import { getClusterDisplayName } from "@/lib/k8s/cluster-info";
 import { parseK8sResourceValue } from "@/lib/k8s/utils";
 import { KLBadge } from "@/components/kl/Badge";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+import { formatLabel } from "@/lib/k8s/utils";
 
 function formatMemory(bytes) {
   if (!bytes) return "0 GiB";
@@ -58,8 +63,6 @@ function synced(ts) {
   const s = Math.round((Date.now() - ts) / 1000);
   return s < 60 ? `${s}s ago` : `${Math.floor(s / 60)}m ago`;
 }
-
-/* ─── Design primitives ───────────────────────────────────────────────────── */
 
 function Card({ children, style, padding = 12 }) {
   return (
@@ -459,7 +462,7 @@ function TimelineItem({ kind, title, target, time, msg, last }) {
               letterSpacing: 0.4,
             }}
           >
-            {title}
+            {formatLabel(title)}
           </span>
           <Badge
             variant="secondary"
@@ -493,13 +496,14 @@ function TimelineItem({ kind, title, target, time, msg, last }) {
   );
 }
 
-/* ─── Health Dialog ───────────────────────────────────────────────────────── */
-
 function HealthDialog({ healthScore }) {
   const { score, healthLabel, deductions = [] } = healthScore;
   return (
-    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-      <DialogHeader>
+    <DialogContent className="sm:max-w-4xl p-0 overflow-hidden">
+      <DialogHeader
+        className="px-5 pt-4 pb-3"
+        style={{ borderBottom: "1px solid var(--kl-border)" }}
+      >
         <DialogTitle className="flex items-center gap-3">
           {score >= 90 && (
             <CheckCircle
@@ -525,79 +529,231 @@ function HealthDialog({ healthScore }) {
           Cluster Health Report
         </DialogTitle>
       </DialogHeader>
-      <div className="space-y-4 py-4">
+
+      <div
+        className="grid grid-cols-2 max-h-[75vh]"
+        style={{ borderBottom: "1px solid var(--kl-border)" }}
+      >
+        {/* Left column — score + active issues */}
         <div
-          className="flex items-center justify-between rounded-lg p-4"
-          style={{ background: "var(--kl-surface-2)" }}
+          className="flex flex-col gap-4 overflow-y-auto p-4"
+          style={{ borderRight: "1px solid var(--kl-border)" }}
         >
-          <div>
-            <p className="text-xs" style={{ color: "var(--kl-text-muted)" }}>
-              Overall score
-            </p>
-            <p className="mt-1 text-3xl font-bold">{score}/100</p>
-          </div>
-          <KLBadge tone={score >= 90 ? "ok" : score >= 70 ? "warn" : "err"}>
-            {healthLabel}
-          </KLBadge>
-        </div>
-        {deductions.length > 0 ? (
-          <div className="space-y-2">
-            {deductions.map((d, i) => (
-              <div
-                key={i}
-                className="rounded-lg border p-3"
-                style={{ background: "var(--kl-err-tint)" }}
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <span
-                    className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium"
-                    style={{ background: "var(--kl-err)", color: "#fff" }}
-                  >
-                    −{d.deduction}
-                  </span>
-                  <span className="text-sm font-medium">{d.category}</span>
-                </div>
-                <p
-                  className="text-xs"
-                  style={{ color: "var(--kl-text-muted)" }}
-                >
-                  {d.reason}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
           <div
-            className="rounded-lg border p-8 text-center"
-            style={{ background: "var(--kl-ok-tint)" }}
+            className="flex items-center justify-between rounded-lg p-4"
+            style={{ background: "var(--kl-surface-2)" }}
           >
-            <CheckCircle
-              className="mx-auto mb-2 h-10 w-10"
-              style={{ color: "var(--kl-ok)" }}
-            />
-            <p className="font-medium" style={{ color: "var(--kl-ok)" }}>
-              No issues detected
-            </p>
+            <div>
+              <p className="text-xs" style={{ color: "var(--kl-text-muted)" }}>
+                Overall score
+              </p>
+              <p className="mt-1 text-3xl font-bold">{score}/100</p>
+            </div>
+            <KLBadge tone={score >= 90 ? "ok" : score >= 70 ? "warn" : "err"}>
+              {healthLabel}
+            </KLBadge>
           </div>
-        )}
-        <div
-          className="space-y-1 rounded-lg border p-3 text-xs"
-          style={{ color: "var(--kl-text-2)" }}
-        >
-          <p className="mb-1 font-medium" style={{ color: "var(--kl-text)" }}>
-            Score calculation
+
+          <p
+            className="text-xs font-semibold uppercase tracking-wide"
+            style={{ color: "var(--kl-text-muted)" }}
+          >
+            Active issues
           </p>
-          <p>
-            • Nodes −30 max · Pods −30 max · Workloads −20 max · Events −10 max
-            · Config −10 max
+
+          {deductions.length > 0 ? (
+            <div className="space-y-2">
+              {deductions.map((d, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg border p-3"
+                  style={{ background: "var(--kl-err-tint)" }}
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium"
+                      style={{ background: "var(--kl-err)", color: "#fff" }}
+                    >
+                      −{d.deduction}
+                    </span>
+                    <span className="text-sm font-medium">{d.category}</span>
+                  </div>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--kl-text-muted)" }}
+                  >
+                    {d.reason}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="rounded-lg border p-8 text-center"
+              style={{ background: "var(--kl-ok-tint)" }}
+            >
+              <CheckCircle
+                className="mx-auto mb-2 h-10 w-10"
+                style={{ color: "var(--kl-ok)" }}
+              />
+              <p className="font-medium" style={{ color: "var(--kl-ok)" }}>
+                No issues detected
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Right column — score breakdown table */}
+        <div className="overflow-y-auto p-4">
+          <p
+            className="mb-3 text-xs font-semibold uppercase tracking-wide"
+            style={{ color: "var(--kl-text-muted)" }}
+          >
+            Score breakdown
           </p>
+          {(() => {
+            const categories = [
+              {
+                label: "Node Health",
+                max: 30,
+                checks: [
+                  "Not ready nodes (−5 each, max −15)",
+                  "Disk pressure (−10)",
+                  "Memory pressure (−10)",
+                  "PID pressure (−5)",
+                ],
+              },
+              {
+                label: "Pod Health",
+                max: 30,
+                checks: [
+                  "Failed pods (−1 each, max −10)",
+                  "Pending pods (−1 each, max −10)",
+                  "CrashLoopBackOff pods (−10)",
+                ],
+              },
+              {
+                label: "Workload Health",
+                max: 20,
+                checks: [
+                  "Degraded deployments (−2 each, max −10)",
+                  "Degraded statefulsets (−2 each, max −10)",
+                  "Degraded daemonsets (−2 each, max −5)",
+                ],
+              },
+              {
+                label: "Recent Events",
+                max: 10,
+                checks: ["Warning events in last 15 min (−1 each, max −10)"],
+              },
+              {
+                label: "Config & Networking",
+                max: 10,
+                checks: [
+                  "Namespaces without ResourceQuota (−5)",
+                  "Services without endpoints (−5)",
+                ],
+              },
+            ];
+
+            const deducted = categories.map((cat) => {
+              const catDeductions = deductions.filter((d) =>
+                cat.label === "Config & Networking"
+                  ? d.category === "Configuration" ||
+                    d.category === "Networking"
+                  : d.category === cat.label,
+              );
+              return catDeductions.reduce((s, d) => s + d.deduction, 0);
+            });
+
+            return (
+              <div className="space-y-2">
+                {categories.map((cat, i) => {
+                  const lost = deducted[i];
+                  const pct = lost / cat.max;
+                  return (
+                    <Collapsible key={i} defaultOpen={lost > 0}>
+                      <div
+                        className="rounded-lg border text-xs"
+                        style={{ background: "var(--kl-surface-2)" }}
+                      >
+                        <CollapsibleTrigger className="flex w-full items-center justify-between p-3 [&[data-state=open]>div>svg]:rotate-180">
+                          <span
+                            className="font-medium"
+                            style={{ color: "var(--kl-text)" }}
+                          >
+                            {cat.label}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span style={{ color: "var(--kl-text-muted)" }}>
+                              max −{cat.max}
+                            </span>
+                            <span
+                              className="inline-block rounded px-1.5 py-0.5 font-semibold tabular-nums"
+                              style={{
+                                background:
+                                  lost === 0
+                                    ? "var(--kl-ok-tint)"
+                                    : pct >= 0.7
+                                      ? "var(--kl-err-tint)"
+                                      : "var(--kl-warn-tint)",
+                                color:
+                                  lost === 0
+                                    ? "var(--kl-ok)"
+                                    : pct >= 0.7
+                                      ? "var(--kl-err)"
+                                      : "var(--kl-warn)",
+                              }}
+                            >
+                              {lost === 0 ? "−0" : `−${lost}`}
+                            </span>
+                            <ChevronDown
+                              className="h-3.5 w-3.5 transition-transform duration-200"
+                              style={{ color: "var(--kl-text-muted)" }}
+                            />
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3">
+                            <div
+                              className="mb-2 h-1 w-full overflow-hidden rounded-full"
+                              style={{ background: "var(--kl-border)" }}
+                            >
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${pct * 100}%`,
+                                  background:
+                                    lost === 0
+                                      ? "var(--kl-ok)"
+                                      : pct >= 0.7
+                                        ? "var(--kl-err)"
+                                        : "var(--kl-warn)",
+                                }}
+                              />
+                            </div>
+                            <ul
+                              className="space-y-0.5"
+                              style={{ color: "var(--kl-text-muted)" }}
+                            >
+                              {cat.checks.map((c, j) => (
+                                <li key={j}>{c}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </DialogContent>
   );
 }
-
-/* ─── Inline SVG icons ────────────────────────────────────────────────────── */
 
 const I = {
   health: (
@@ -691,8 +847,6 @@ const I = {
   ),
 };
 
-/* ─── Page ────────────────────────────────────────────────────────────────── */
-
 export default function DashboardPage() {
   const activeContext = useClusterStore((s) => s.activeContext);
   const { raw, loading, refreshing, error, refresh } = useDashboardData();
@@ -725,8 +879,6 @@ export default function DashboardPage() {
     />
   );
 }
-
-/* ─── Dashboard Content ───────────────────────────────────────────────────── */
 
 function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
   const [eventFilter, setEventFilter] = React.useState("All");
