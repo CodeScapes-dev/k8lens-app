@@ -81,7 +81,7 @@ export function ConnectPage() {
         setStatus("success");
         await new Promise((resolve) => setTimeout(resolve, 800));
         commit();
-        router.push("/workloads/deployments");
+        router.push("/dashboard");
       } catch (error) {
         const message = error.message || "Connection failed.";
         setErrorMessage(message);
