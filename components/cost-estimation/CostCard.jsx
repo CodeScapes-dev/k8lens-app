@@ -5,7 +5,7 @@ import { Panel } from "@/components/kl/Panel";
 import { parseK8sResourceValue } from "@/lib/k8s/utils";
 import { AlertTriangleIcon, SettingsIcon } from "lucide-react";
 
-const DEFAULT_CONFIG = { enabled: true, cpuPerCoreHour: 0.048, memPerGbHour: 0.006, currency: "USD" };
+const DEFAULT_CONFIG = { enabled: false, cpuPerCoreHour: 0.048, memPerGbHour: 0.006, currency: "USD" };
 
 function loadConfig() {
   try {
