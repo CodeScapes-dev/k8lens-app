@@ -7,7 +7,7 @@ import {
   BellIcon, TagIcon, ShareIcon, ActivityIcon,
 } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
-import { calculateAge, getPodStatus, getPodRestarts, parseK8sResourceValue } from "@/lib/k8s/utils";
+import { calculateAge, getPodStatus, getPodRestarts, parseK8sResourceValue, formatMemory } from "@/lib/k8s/utils";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HealthBadge } from "@/components/health-score/HealthBadge";
@@ -48,10 +48,7 @@ function totalMem(pod) {
   const bytes = (pod?.spec?.containers ?? []).reduce((sum, c) => {
     return sum + parseK8sResourceValue(c.resources?.requests?.memory, "memory");
   }, 0);
-  const gi = bytes / 1024 ** 3;
-  if (gi >= 0.1) return `${gi.toFixed(2)}Gi`;
-  const mi = bytes / 1024 ** 2;
-  return `${Math.round(mi)}Mi`;
+  return formatMemory(bytes);
 }
 
 export default function PodDetailPage() {
@@ -96,9 +93,6 @@ export default function PodDetailPage() {
                   {Object.entries(labels).slice(0, 8).map(([k, v]) => (
                     <Badge key={k} variant="secondary" className="font-mono text-[10.5px] font-normal">{k}={v}</Badge>
                   ))}
-                  {owners.map((o) => (
-                    <Badge key={o.uid} variant="outline" className="font-mono text-[10.5px] border-primary/40 bg-primary/10 text-primary">{o.kind}: {o.name}</Badge>
-                  ))}
                 </div>
               </div>
 
@@ -106,8 +100,8 @@ export default function PodDetailPage() {
               <div className="grid grid-cols-4 w-full sm:w-auto rounded-xl border border-border overflow-hidden shrink-0 divide-x divide-border">
                 <QuickStat label="Restarts" value={restarts} />
                 <QuickStat label="Age" value={pod?.metadata?.creationTimestamp ? calculateAge(pod.metadata.creationTimestamp) : "—"} />
-                <QuickStat label="CPU" value={cpuFmt} />
-                <QuickStat label="Memory" value={pod ? totalMem(pod) : "—"} />
+                <QuickStat label="CPU Req" value={cpuFmt} />
+                <QuickStat label="Mem Req" value={pod ? totalMem(pod) : "—"} />
               </div>
             </div>
 

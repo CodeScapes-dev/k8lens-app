@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { formatLabel } from "@/lib/k8s/utils";
 
 function StatCard({ label, value }) {
   return (
@@ -26,7 +27,7 @@ export function NetworkingTab({ pod }) {
         <StatCard label="Pod IP" value={status.podIP} />
         <StatCard label="Host IP" value={status.hostIP} />
         <StatCard label="Service Account" value={spec.serviceAccountName} />
-        <StatCard label="DNS Policy" value={spec.dnsPolicy} />
+        <StatCard label="DNS Policy" value={spec.dnsPolicy ? formatLabel(spec.dnsPolicy) : "—"} />
       </div>
 
       <Card className="p-0 gap-0">

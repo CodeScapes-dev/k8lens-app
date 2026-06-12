@@ -149,7 +149,7 @@ export function LogsTab({ pod }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, height: "calc(100vh - 220px)", minHeight: 400 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0, height: "calc(100vh - 320px)", minHeight: 320 }}>
       {/* Toolbar */}
       <div style={{
         display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center",

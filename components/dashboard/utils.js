@@ -1,10 +1,4 @@
-export function formatMemory(bytes) {
-  if (!bytes) return "0 GiB";
-  const gb = bytes / (1024 * 1024 * 1024);
-  return gb >= 1
-    ? `${gb.toFixed(1)} GiB`
-    : `${(bytes / (1024 * 1024)).toFixed(0)} MiB`;
-}
+export { formatMemory } from "@/lib/k8s/utils";
 
 export function formatAge(ts) {
   if (!ts) return "N/A";
