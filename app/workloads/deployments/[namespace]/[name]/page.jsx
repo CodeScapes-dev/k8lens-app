@@ -21,7 +21,7 @@ import { RolloutHistoryTab } from "@/components/deployment-detail/tabs/RolloutHi
 import { BlastRadiusTab }    from "@/components/deployment-detail/tabs/BlastRadiusTab";
 import { EventsTab }         from "@/components/deployment-detail/tabs/EventsTab";
 import { MetadataTab }       from "@/components/deployment-detail/tabs/MetadataTab";
-import { DeploymentLogsTab } from "@/components/deployment-detail/tabs/LogsTab";
+import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 
 const TABS = [
   { id: "Overview",        icon: LayoutDashboardIcon },
@@ -162,7 +162,7 @@ export default function DeploymentDetailPage() {
         {activeTab === "Overview"        && <OverviewTab       deployment={deployment} replicaSets={replicaSets} pods={pods} events={events} onTabChange={setActiveTab} />}
         {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"       && <ResourcesTab      deployment={deployment} />}
-        {activeTab === "Logs"            && <DeploymentLogsTab pods={pods} />}
+        {activeTab === "Logs"            && <SharedLogsTab pods={pods} />}
         {activeTab === "Rollout History" && <RolloutHistoryTab deployment={deployment} replicaSets={replicaSets} />}
         {activeTab === "Blast Radius"    && <BlastRadiusTab    deployment={deployment} pods={pods} replicaSets={replicaSets} />}
         {activeTab === "Dependencies"    && <DependencyGraph   resourceType="deployment" resource={deployment} />}

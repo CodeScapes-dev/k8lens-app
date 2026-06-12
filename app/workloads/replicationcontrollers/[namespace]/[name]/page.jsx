@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, ScrollTextIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
@@ -14,11 +14,13 @@ import { OverviewTab } from "@/components/replicationcontroller-detail/tabs/Over
 import { ResourcesTab } from "@/components/replicationcontroller-detail/tabs/ResourcesTab";
 import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
 import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
+import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
   { id: "Metrics", icon: ActivityIcon },
   { id: "Resources", icon: CpuIcon },
+  { id: "Logs", icon: ScrollTextIcon, live: true },
   { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
   { id: "Metadata", icon: TagIcon },
@@ -80,12 +82,13 @@ export default function ReplicationControllerDetailPage() {
             </div>
             <div className="flex" style={{ overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none", touchAction: "pan-x", overscrollBehaviorX: "contain" }}>
               <div className="flex gap-0 min-w-max">
-                {TABS.map(({ id, icon: Icon }) => {
+                {TABS.map(({ id, icon: Icon, live }) => {
                   const active = activeTab === id;
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
+                      {live && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 inline-block" />}
                     </button>
                   );
                 })}
@@ -98,6 +101,7 @@ export default function ReplicationControllerDetailPage() {
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview" && <OverviewTab rc={rc} pods={pods} events={events} />}
         {activeTab === "Resources" && <ResourcesTab containers={containers} pods={pods} />}
+        {activeTab === "Logs" && <SharedLogsTab pods={pods} />}
         {activeTab === "Dependencies" && <DependencyGraph resourceType="replicationcontroller" resource={rc} />}
         {activeTab === "Events" && <SharedEventsTab events={events} />}
         {activeTab === "Metadata" && <SharedMetadataTab resource={rc} />}

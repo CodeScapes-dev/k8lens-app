@@ -904,7 +904,7 @@ function DepGraphInner({ resourceType, resource, allData }) {
 }
 
 // ── Public component ───────────────────────────────────────────────────────
-export function DependencyGraph({ resourceType, resource }) {
+export function DependencyGraph({ resourceType, resource, pods: seedPods }) {
   const activeContext = useStore?.((s) => s.activeContext) ?? null;
   const namespace = resource?.metadata?.namespace;
 
@@ -946,7 +946,7 @@ export function DependencyGraph({ resourceType, resource }) {
   const allData = React.useMemo(() => ({
     services:            norm(servicesData),
     ingresses:           norm(ingressesData),
-    pods:                norm(podsData),
+    pods:                seedPods?.length ? seedPods : norm(podsData),
     allPods:             norm(allPodsData),
     allDeployments:      norm(allDeploymentsData),
     allStatefulsets:     norm(allStatefulsetsData),
@@ -973,7 +973,7 @@ export function DependencyGraph({ resourceType, resource }) {
     clusterrolebindings: norm(clusterrolebindingsData),
     ingressclasses:      norm(ingressclassesData),
   }), [
-    servicesData, ingressesData, podsData, allPodsData, replicasetsData, hpasData,
+    servicesData, ingressesData, podsData, allPodsData, replicasetsData, hpasData, seedPods,
     allDeploymentsData, allStatefulsetsData, allDaemonsetsData, allJobsData, allReplicasetsData,
     configmapsData, secretsData, serviceaccountsData, jobsData, cronjobsData,
     rcData, endpointsData, networkpoliciesData, pvcsData, pvsData,

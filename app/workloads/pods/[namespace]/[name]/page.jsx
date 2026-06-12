@@ -14,7 +14,7 @@ import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { OverviewTab } from "@/components/pod-detail/tabs/OverviewTab";
 import { NetworkingTab } from "@/components/pod-detail/tabs/NetworkingTab";
 import { ResourcesTab } from "@/components/pod-detail/tabs/ResourcesTab";
-import { LogsTab } from "@/components/pod-detail/tabs/LogsTab";
+import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 import { EventsTab } from "@/components/pod-detail/tabs/EventsTab";
 import { MetadataTab } from "@/components/pod-detail/tabs/MetadataTab";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
@@ -144,7 +144,7 @@ export default function PodDetailPage() {
         {activeTab === "Metrics"      && <PodMetricsTab pod={pod} namespace={namespace} name={name} />}
         {activeTab === "Networking"   && <NetworkingTab pod={pod} />}
         {activeTab === "Resources"    && <ResourcesTab pod={pod} />}
-        {activeTab === "Logs"         && <LogsTab pod={pod} />}
+        {activeTab === "Logs"         && <SharedLogsTab pods={pod ? [pod] : []} />}
         {activeTab === "Dependencies" && <DependencyGraph resourceType="pod" resource={pod} />}
         {activeTab === "Events"       && <EventsTab events={events} />}
         {activeTab === "Metadata"     && <MetadataTab pod={pod} />}
