@@ -302,9 +302,10 @@ function KpiCard({
   spark,
   sparkColor = "var(--kl-accent)",
   footer,
+  href,
 }) {
-  return (
-    <Card style={{ position: "relative", overflow: "hidden", minHeight: 120 }}>
+  const inner = (
+    <Card style={{ position: "relative", overflow: "hidden", minHeight: 120, ...(href ? { cursor: "pointer", transition: "background 0.15s" } : {}) }}>
       <div
         style={{
           display: "flex",
@@ -392,6 +393,11 @@ function KpiCard({
       )}
     </Card>
   );
+  return href ? (
+    <Link href={href} style={{ textDecoration: "none", display: "block" }} className="hover:opacity-90">
+      {inner}
+    </Link>
+  ) : inner;
 }
 
 function TimelineItem({ kind, title, target, time, msg, last }) {
@@ -881,13 +887,19 @@ export default function DashboardPage() {
 }
 
 function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
+  const autoRefresh = useClusterStore((s) => s.preferences?.autoRefresh ?? 0);
   const [eventFilter, setEventFilter] = React.useState("All");
   const { data: helmData, loading: helmLoading } = useK8sResource(
     "helm",
     "releases",
     { listParams: { limit: 100 } },
   );
-  const [syncedAt] = React.useState(() => Date.now());
+  const [syncedAt, setSyncedAt] = React.useState(() => Date.now());
+  const prevRefreshing = React.useRef(false);
+  React.useEffect(() => {
+    if (prevRefreshing.current && !refreshing) setSyncedAt(Date.now());
+    prevRefreshing.current = refreshing;
+  }, [refreshing]);
   const [costEnabled, setCostEnabled] = React.useState(true);
 
   React.useEffect(() => {
@@ -1016,48 +1028,56 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
       n: data.deployments.length,
       sub: `${workloadHealth.deployments.healthy}/${data.deployments.length} ready`,
       c: "var(--kl-ok)",
+      href: "/workloads/deployments",
     },
     {
       l: "StatefulSets",
       n: data.statefulSets.length,
       sub: `${workloadHealth.statefulSets.healthy}/${data.statefulSets.length} ready`,
       c: "var(--kl-ok)",
+      href: "/workloads/statefulsets",
     },
     {
       l: "DaemonSets",
       n: data.daemonSets.length,
       sub: `${workloadHealth.daemonSets.healthy}/${data.daemonSets.length} ready`,
       c: "var(--kl-ok)",
+      href: "/workloads/daemonsets",
     },
     {
       l: "Jobs",
       n: jobHealth.jobs.total,
       sub: `${jobHealth.jobs.active} active`,
       c: "var(--kl-text-muted)",
+      href: "/workloads/jobs",
     },
     {
       l: "CronJobs",
       n: data.cronJobs.length,
       sub: `${jobHealth.cronJobs.active} active`,
       c: "var(--kl-text-muted)",
+      href: "/workloads/cronjobs",
     },
     {
       l: "Services",
       n: data.services.length,
       sub: `${data.services.filter((s) => s?.spec?.type === "LoadBalancer").length} LB`,
       c: "var(--kl-accent)",
+      href: "/network/services",
     },
     {
       l: "Ingresses",
       n: data.ingresses.length,
       sub: `${data.ingresses.length} hosts`,
       c: "var(--kl-accent)",
+      href: "/network/ingresses",
     },
     {
       l: "Namespaces",
       n: data.namespaces.length,
       sub: "all active",
       c: "var(--kl-info)",
+      href: "/namespaces",
     },
   ];
 
@@ -1170,7 +1190,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
               color: "var(--kl-text-faint)",
             }}
           >
-            Synced {synced(syncedAt)} · auto-refresh 10s
+            Synced {synced(syncedAt)}{autoRefresh > 0 ? ` · auto-refresh ${autoRefresh}s` : ""}
           </span>
           <button
             onClick={onRefresh}
@@ -1436,6 +1456,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
         {/* ── KPI Strip ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-[14px]">
           <KpiCard
+            href="/workloads/pods"
             label="Pods"
             value={data.pods.length}
             sub={`${podPhases.Running || 0} running`}
@@ -1481,6 +1502,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
             }
           />
           <KpiCard
+            href="/cluster/nodes"
             label="Nodes"
             value={nodeHealth.total}
             sub={`${nodeHealth.ready} ready`}
@@ -1518,6 +1540,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
             }
           />
           <KpiCard
+            href="/workloads/deployments"
             label="Workloads"
             value={totalWorkloads}
             sub={`${readyWorkloads}/${totalWorkloads} ready`}
@@ -1702,14 +1725,19 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
             {topoItems.map((t, i, arr) => (
-              <div
+              <Link
                 key={t.l}
+                href={t.href}
                 style={{
                   padding: "12px 14px",
                   borderRight:
                     i < arr.length - 1 ? "1px solid var(--kl-border)" : "none",
                   minWidth: 0,
+                  display: "block",
+                  textDecoration: "none",
+                  transition: "background 0.15s",
                 }}
+                className="hover:bg-[var(--kl-surface-2)]"
               >
                 <div
                   style={{
@@ -1762,7 +1790,7 @@ function DashboardContent({ data, activeContext, refreshing, onRefresh }) {
                 >
                   {t.sub}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </Card>
