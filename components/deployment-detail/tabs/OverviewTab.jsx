@@ -3,7 +3,7 @@
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
-import { calculateAge, formatTimestamp } from "@/lib/k8s/utils";
+import { calculateAge, formatTimestamp, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
 
 function kv(label, value) {
@@ -17,21 +17,6 @@ function kv(label, value) {
   );
 }
 
-function ReplicaBar({ ready, desired }) {
-  const pct = desired > 0 ? Math.min(100, Math.round((ready / desired) * 100)) : 0;
-  const color = pct === 100 ? "var(--kl-ok)" : pct === 0 ? "var(--kl-err)" : "var(--kl-warn)";
-  return (
-    <div style={{ marginTop: 6 }}>
-      <div style={{ height: 6, borderRadius: 3, background: "var(--kl-surface-3)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 3, transition: "width 0.3s" }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-        <span style={{ fontSize: 10, color: "var(--kl-text-faint)" }}>{pct}% ready</span>
-        <span className="kl-mono" style={{ fontSize: 10, color: "var(--kl-text-muted)" }}>{ready}/{desired}</span>
-      </div>
-    </div>
-  );
-}
 
 function deploymentStatusKind(dep) {
   const desired = dep?.spec?.replicas ?? 0;
@@ -58,9 +43,6 @@ export function OverviewTab({ deployment, replicaSets = [], pods = [], events = 
 
   const statusKind = deploymentStatusKind(deployment);
   const desired = spec.replicas ?? 0;
-  const ready = status.readyReplicas ?? 0;
-  const updated = status.updatedReplicas ?? 0;
-  const available = status.availableReplicas ?? 0;
 
   const recentEvents = [...events]
     .sort((a, b) => new Date(b.lastTimestamp ?? b.firstTimestamp ?? 0) - new Date(a.lastTimestamp ?? a.firstTimestamp ?? 0))
@@ -84,59 +66,11 @@ export function OverviewTab({ deployment, replicaSets = [], pods = [], events = 
             {kv("UID", meta.uid)}
             {kv("Created", meta.creationTimestamp ? calculateAge(meta.creationTimestamp) + " ago" : "—")}
             {kv("Revision", currentRevision ?? "—")}
-            {kv("Strategy", strategy.type ?? "—")}
+            {kv("Strategy", strategy.type ? formatLabel(strategy.type) : "—")}
             {kv("Min Ready", spec.minReadySeconds ? `${spec.minReadySeconds}s` : "—")}
             {kv("Progress Deadline", spec.progressDeadlineSeconds ? `${spec.progressDeadlineSeconds}s` : "—")}
           </div>
         </Panel>
-
-        <Panel
-          title="Replica Status"
-          subtitle={`${ready}/${desired} ready`}
-        >
-          <ReplicaBar ready={ready} desired={desired} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 14 }}>
-            {[
-              { label: "Desired",   value: desired },
-              { label: "Ready",     value: ready },
-              { label: "Updated",   value: updated },
-              { label: "Available", value: available },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ textAlign: "center", padding: "10px 8px", background: "var(--kl-surface-2)", borderRadius: 8, border: "1px solid var(--kl-border)" }}>
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "var(--kl-text-muted)", marginBottom: 4 }}>{label}</div>
-                <div className="kl-mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--kl-text)" }}>{value}</div>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        {pods.length > 0 && (
-          <Panel title="Pods" subtitle={`${pods.length} pod${pods.length !== 1 ? "s" : ""}`}>
-            <div style={{ display: "grid", gridTemplateColumns: "20px 1fr 80px 60px", gap: "6px 10px", marginBottom: 6 }}>
-              {["", "Name", "Status", "Restarts"].map((h, i) => (
-                <span key={i} className="kl-mono" style={{ fontSize: 10, color: "var(--kl-text-faint)", textTransform: "uppercase", letterSpacing: 1 }}>{h}</span>
-              ))}
-            </div>
-            {pods.slice(0, 10).map((pod) => {
-              const phase = pod.status?.phase ?? "Unknown";
-              const restarts = (pod.status?.containerStatuses ?? []).reduce((s, c) => s + (c.restartCount ?? 0), 0);
-              const pkind = phase === "Running" ? "ok" : phase === "Pending" ? "warn" : "err";
-              return (
-                <div key={pod.metadata?.uid} style={{ display: "grid", gridTemplateColumns: "20px 1fr 80px 60px", gap: "6px 10px", padding: "6px 0", borderTop: "1px solid var(--kl-border)", alignItems: "center" }}>
-                  <KLStatus kind={pkind} dotOnly />
-                  <span className="kl-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pod.metadata?.name}</span>
-                  <KLBadge tone={pkind}>{phase}</KLBadge>
-                  <span className="kl-mono" style={{ fontSize: 12, color: "var(--kl-text-muted)" }}>{restarts}</span>
-                </div>
-              );
-            })}
-            {pods.length > 10 && (
-              <div style={{ marginTop: 8, fontSize: 11, color: "var(--kl-text-faint)", textAlign: "center" }}>
-                +{pods.length - 10} more pods
-              </div>
-            )}
-          </Panel>
-        )}
 
         {recentEvents.length > 0 && (
           <Panel title="Recent Events" subtitle="last 5">
