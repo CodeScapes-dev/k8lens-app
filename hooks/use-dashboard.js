@@ -42,14 +42,6 @@ export function useDashboardData() {
         throw new Error(err?.message ?? err ?? "Request failed");
       }
       setRaw(json);
-      if (isFirstFetch.current) {
-        const clusterHint = clusters.map((c) => ({ contextName: c.contextName, server: c.server ?? "" }));
-        fetch("/api/telemetry/ping", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clusters: clusterHint }),
-        }).catch(() => {});
-      }
       isFirstFetch.current = false;
       if (isBackground) window.dispatchEvent(new CustomEvent("kl:refreshed"));
     } catch (err) {
