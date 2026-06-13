@@ -42,6 +42,9 @@ export function useDashboardData() {
         throw new Error(err?.message ?? err ?? "Request failed");
       }
       setRaw(json);
+      if (isFirstFetch.current) {
+        fetch("/api/telemetry/ping", { method: "POST" }).catch(() => {});
+      }
       isFirstFetch.current = false;
       if (isBackground) window.dispatchEvent(new CustomEvent("kl:refreshed"));
     } catch (err) {

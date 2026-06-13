@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# telemetry runtime state (generated inside container, not for version control)
+/data/telemetry-state.json

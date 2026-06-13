@@ -5,10 +5,20 @@ import { useClusterStore } from "@/stores/clusterStore";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { APP_VERSION } from "@/lib/data";
+import { formatDistanceToNow } from "date-fns";
 
 export function AboutTab() {
   const { clusters, clearClusters } = useClusterStore();
   const [confirming, setConfirming] = React.useState(false);
+  const [telemetry, setTelemetry] = React.useState(null);
+  const [showPayload, setShowPayload] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch("/api/telemetry/status")
+      .then((r) => r.json())
+      .then(setTelemetry)
+      .catch(() => {});
+  }, []);
 
   const handleClearAll = () => {
     if (!confirming) {
@@ -46,6 +56,54 @@ export function AboutTab() {
             </a>
           }
         />
+      </div>
+
+      <Separator />
+
+      {/* Telemetry */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Telemetry</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Anonymous usage data sent to help improve K8Lens. Set{" "}
+              <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">TELEMETRY_DISABLED=true</code>{" "}
+              to opt out.
+            </p>
+          </div>
+          {telemetry && (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${telemetry.enabled ? "border-green-500/40 bg-green-500/10 text-green-600" : "border-border text-muted-foreground"}`}>
+              {telemetry.enabled ? "Enabled" : "Disabled"}
+            </span>
+          )}
+        </div>
+
+        {telemetry && (
+          <div className="flex flex-col gap-2 text-sm">
+            <Row label="Install ID" value={<span className="font-mono text-xs">{telemetry.installId?.slice(0, 8)}…</span>} />
+            <Row
+              label="Last ping"
+              value={telemetry.lastPingAt
+                ? formatDistanceToNow(new Date(telemetry.lastPingAt), { addSuffix: true })
+                : "Not yet sent"}
+            />
+            {telemetry.lastPayload && (
+              <div>
+                <button
+                  onClick={() => setShowPayload((v) => !v)}
+                  className="text-xs text-primary underline underline-offset-2"
+                >
+                  {showPayload ? "Hide" : "Show"} last payload
+                </button>
+                {showPayload && (
+                  <pre className="mt-2 p-3 rounded-md bg-muted text-[10.5px] font-mono overflow-auto max-h-48 text-muted-foreground">
+                    {JSON.stringify(telemetry.lastPayload, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <Separator />
