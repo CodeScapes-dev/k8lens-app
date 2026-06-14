@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { extractK8sError, loadDefaultKubeConfig, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
+import { extractK8sError, isolateContext, loadDefaultKubeConfig, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
 import { storeCluster } from "@/lib/k8s/cluster-store";
 
 export async function POST() {
@@ -21,11 +21,11 @@ export async function POST() {
 
   const clusters = await Promise.all(
     contexts.map(async (context) => {
+      const ctx = isolateContext(kubeConfig, context.name);
+      const server = ctx.getCurrentCluster()?.server ?? "";
       try {
-        kubeConfig.setCurrentContext(context.name);
-        const server = kubeConfig.getCurrentCluster()?.server ?? "";
-        const result = await validateConnection(kubeConfig);
-        const serialized = serializeKubeConfig(kubeConfig);
+        const result = await validateConnection(ctx);
+        const serialized = await serializeKubeConfig(ctx);
         storeCluster(context.name, serialized);
 
         return {
@@ -41,7 +41,6 @@ export async function POST() {
           token: serialized.token,
         };
       } catch (error) {
-        const server = kubeConfig.getCurrentCluster()?.server ?? "";
         const unreachable = ["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT"].some(
           (code) => error?.code === code || error?.cause?.code === code
         );
