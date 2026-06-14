@@ -24,7 +24,7 @@ export async function POST(request) {
 
   try {
     const result = await validateConnection(kubeConfig);
-    const serialized = serializeKubeConfig(kubeConfig);
+    const serialized = await serializeKubeConfig(kubeConfig);
     storeCluster("manual-context", serialized);
 
     return NextResponse.json({

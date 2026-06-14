@@ -1,21 +1,34 @@
 "use client";
 
-import React from "react";
-import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
+import { parseK8sResourceValue, formatMemory } from "@/lib/k8s/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Panel } from "@/components/kl/Panel";
 
 function stateLabel(cs) {
   if (!cs?.state) return "—";
-  const key = Object.keys(cs.state)[0];
-  return key;
+  return Object.keys(cs.state)[0];
 }
 
 function stateTone(cs) {
   const key = Object.keys(cs?.state ?? {})[0];
   if (key === "running") return "ok";
   if (key === "waiting") return "warn";
-  if (key === "terminated") return cs.state.terminated?.exitCode === 0 ? "neutral" : "err";
+  if (key === "terminated")
+    return cs.state.terminated?.exitCode === 0 ? "neutral" : "err";
   return "neutral";
+}
+
+function fmtMemory(raw) {
+  if (!raw) return "—";
+  return formatMemory(parseK8sResourceValue(raw, "memory"));
 }
 
 export function ResourcesTab({ pod }) {
@@ -28,29 +41,49 @@ export function ResourcesTab({ pod }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Panel title="Container Resources">
-        <div style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 620 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 100px 100px 100px 70px", gap: "6px 12px", marginBottom: 8 }}>
-          {["Container", "State", "CPU Req", "CPU Limit", "Mem Req", "Mem Limit", "Restarts"].map((h) => (
-            <span key={h} className="kl-mono" style={{ fontSize: 10, color: "var(--kl-text-faint)", textTransform: "uppercase", letterSpacing: 1 }}>{h}</span>
-          ))}
-        </div>
-        {containers.map((c) => {
-          const cs = containerStatuses.find((s) => s.name === c.name);
-          const res = c.resources ?? {};
-          return (
-            <div key={c.name} style={{ display: "grid", gridTemplateColumns: "1fr 80px 100px 100px 100px 100px 70px", gap: "6px 12px", padding: "10px 0", borderTop: "1px solid var(--kl-border)", alignItems: "center" }}>
-              <span style={{ fontSize: 12.5, fontWeight: 500 }}>{c.name}</span>
-              <KLBadge tone={stateTone(cs)}>{stateLabel(cs)}</KLBadge>
-              <span className="kl-mono" style={{ fontSize: 12 }}>{res.requests?.cpu ?? "—"}</span>
-              <span className="kl-mono" style={{ fontSize: 12 }}>{res.limits?.cpu ?? "—"}</span>
-              <span className="kl-mono" style={{ fontSize: 12 }}>{res.requests?.memory ?? "—"}</span>
-              <span className="kl-mono" style={{ fontSize: 12 }}>{res.limits?.memory ?? "—"}</span>
-              <span className="kl-mono" style={{ fontSize: 12 }}>{cs?.restartCount ?? 0}</span>
-            </div>
-          );
-        })}
-        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Container</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>CPU Req</TableHead>
+                <TableHead>CPU Limit</TableHead>
+                <TableHead>Mem Req</TableHead>
+                <TableHead>Mem Limit</TableHead>
+                <TableHead className="text-right">Restarts</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {containers.map((c) => {
+                const cs = containerStatuses.find((s) => s.name === c.name);
+                const res = c.resources ?? {};
+                return (
+                  <TableRow key={c.name}>
+                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell>
+                      <KLBadge tone={stateTone(cs)}>{stateLabel(cs)}</KLBadge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {res.requests?.cpu ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {res.limits?.cpu ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {fmtMemory(res.requests?.memory)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {fmtMemory(res.limits?.memory)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-right">
+                      {cs?.restartCount ?? 0}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       </Panel>
 
@@ -58,16 +91,34 @@ export function ResourcesTab({ pod }) {
         const envVars = c.env ?? [];
         if (envVars.length === 0) return null;
         return (
-          <Panel key={c.name} title={`Environment · ${c.name}`} subtitle={`${envVars.length} variable${envVars.length !== 1 ? "s" : ""}`}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {envVars.map((e, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 12, padding: "5px 0", borderBottom: "1px solid var(--kl-border)" }}>
-                  <span className="kl-mono" style={{ fontSize: 11.5, color: "var(--kl-text-2)", fontWeight: 500 }}>{e.name}</span>
-                  <span className="kl-mono" style={{ fontSize: 11.5, color: "var(--kl-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {e.value ?? (e.valueFrom ? "<from ref>" : "—")}
-                  </span>
-                </div>
-              ))}
+          <Panel
+            key={c.name}
+            title={`Environment · ${c.name}`}
+            subtitle={`${envVars.length} variable${envVars.length !== 1 ? "s" : ""}`}
+          >
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {envVars.map((e, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-mono text-xs font-medium w-[220px]">
+                        {e.name}
+                      </TableCell>
+                      <TableCell
+                        className="font-mono text-xs text-muted-foreground max-w-[400px] truncate"
+                      >
+                        {e.value ?? (e.valueFrom ? "<from ref>" : "—")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </Panel>
         );

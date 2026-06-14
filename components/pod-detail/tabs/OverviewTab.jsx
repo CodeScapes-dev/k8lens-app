@@ -4,7 +4,7 @@ import React from "react";
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
-import { calculateAge, formatTimestamp, parseK8sResourceValue } from "@/lib/k8s/utils";
+import { calculateAge, formatTimestamp, parseK8sResourceValue, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
 
 function kv(label, value) {
@@ -113,29 +113,12 @@ export function OverviewTab({ pod, events, onTabChange }) {
             {kv("Pod IP", status.podIP)}
             {kv("Host IP", status.hostIP)}
             {kv("Service Account", spec.serviceAccountName)}
-            {kv("DNS Policy", spec.dnsPolicy)}
+            {kv("DNS Policy", spec.dnsPolicy ? formatLabel(spec.dnsPolicy) : "—")}
             {kv("QoS Class", status.qosClass)}
           </div>
         </Panel>
 
-        <Panel
-          title="Containers"
-          subtitle={`${containers.length} container${containers.length !== 1 ? "s" : ""} · ${containerStatuses.filter(cs => cs.ready).length} ready`}
-        >
-          {containers.map((c) => {
-            const cs = containerStatuses.find((s) => s.name === c.name);
-            return (
-              <ContainerCard
-                key={c.name}
-                cs={cs}
-                spec={c}
-                onLogsClick={() => onTabChange?.("Logs")}
-              />
-            );
-          })}
-        </Panel>
-
-        {recentEvents.length > 0 && (
+{recentEvents.length > 0 && (
           <Panel title="Recent Events" subtitle="last 24h">
             <div className="grid gap-x-2 gap-y-1.5 items-start" style={{ gridTemplateColumns: "16px minmax(60px, 100px) 1fr" }}>
               {recentEvents.map((ev, i) => (

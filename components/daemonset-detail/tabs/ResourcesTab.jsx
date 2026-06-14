@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { calculateAge } from "@/lib/k8s/utils";
+import { calculateAge, parseK8sResourceValue, formatMemory } from "@/lib/k8s/utils";
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
@@ -9,15 +9,24 @@ import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
 
-function parseCpu(cpu = "0") {
-  if (!cpu) return 0;
-  return cpu.endsWith("m") ? parseInt(cpu) : parseInt(cpu) * 1000;
+function fmtCpu(raw) {
+  if (!raw) return "—";
+  const m = parseK8sResourceValue(raw, "cpu") * 1000;
+  return m >= 1000 ? `${(m / 1000).toFixed(2)}` : `${Math.round(m)}m`;
 }
-function parseMem(mem = "0") {
-  if (!mem) return 0;
-  if (mem.endsWith("Mi")) return parseFloat(mem);
-  if (mem.endsWith("Gi")) return parseFloat(mem) * 1024;
-  return 0;
+
+function fmtMem(raw) {
+  if (!raw) return "—";
+  const bytes = parseK8sResourceValue(raw, "memory");
+  return formatMemory(bytes);
+}
+
+function fmtResources(res) {
+  if (!res) return "—";
+  const parts = [];
+  if (res.cpu) parts.push(`CPU: ${fmtCpu(res.cpu)}`);
+  if (res.memory) parts.push(`Mem: ${fmtMem(res.memory)}`);
+  return parts.join("  ·  ") || "—";
 }
 
 export function ResourcesTab({ containers, pods }) {
@@ -46,10 +55,10 @@ export function ResourcesTab({ containers, pods }) {
                     {c.ports?.map((p) => `${p.containerPort}/${p.protocol ?? "TCP"}`).join(", ") || "—"}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
-                    {c.resources?.requests ? Object.entries(c.resources.requests).map(([k, v]) => `${k}: ${v}`).join(", ") : "—"}
+                    {fmtResources(c.resources?.requests)}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">
-                    {c.resources?.limits ? Object.entries(c.resources.limits).map(([k, v]) => `${k}: ${v}`).join(", ") : "—"}
+                    {fmtResources(c.resources?.limits)}
                   </TableCell>
                 </TableRow>
               ))}
@@ -83,8 +92,8 @@ export function ResourcesTab({ containers, pods }) {
                 const totalC = pod.spec?.containers?.length ?? 0;
                 const readyC = (pod.status?.containerStatuses ?? []).filter((c) => c.ready).length;
                 const podContainers = pod.spec?.containers ?? [];
-                const cpuM = podContainers.reduce((s, c) => s + parseCpu(c.resources?.requests?.cpu), 0);
-                const memMi = podContainers.reduce((s, c) => s + parseMem(c.resources?.requests?.memory), 0);
+                const cpuCores = podContainers.reduce((s, c) => s + parseK8sResourceValue(c.resources?.requests?.cpu, "cpu"), 0);
+                const memBytes = podContainers.reduce((s, c) => s + parseK8sResourceValue(c.resources?.requests?.memory, "memory"), 0);
                 const podNode = pod.spec?.nodeName ?? "—";
                 const namespace = pod.metadata?.namespace;
                 return (
@@ -98,8 +107,8 @@ export function ResourcesTab({ containers, pods }) {
                     <TableCell className="font-mono text-xs">{restarts}</TableCell>
                     <TableCell className="font-mono text-xs">{readyC}/{totalC}</TableCell>
                     <TableCell><KLBadge tone={pkind}>{phase}</KLBadge></TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{(cpuM / 1000).toFixed(2)} m</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{memMi.toFixed(1)} Mi</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{cpuCores > 0 ? (cpuCores * 1000 >= 1000 ? `${cpuCores.toFixed(2)}` : `${Math.round(cpuCores * 1000)}m`) : "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{memBytes > 0 ? formatMemory(memBytes) : "—"}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{pod.status?.podIP ?? "—"}</TableCell>
                     <TableCell
                       className="font-mono text-xs text-[var(--kl-accent)] truncate max-w-[120px] cursor-pointer"

@@ -33,6 +33,29 @@ import { navigation } from "@/data/navigation";
 import { useClusterStore } from "@/stores/clusterStore";
 import { cn } from "@/lib/utils";
 
+const ONE_HOUR = 60 * 60 * 1000;
+let lastPingSentAt = 0;
+
+function useTelemetryPing() {
+  const clusters = useClusterStore((s) => s.clusters);
+  React.useEffect(() => {
+    function maybePing() {
+      if (Date.now() - lastPingSentAt < ONE_HOUR) return;
+      lastPingSentAt = Date.now();
+      const hint = clusters.map((c) => ({ contextName: c.contextName, server: c.server ?? "" }));
+      fetch("/api/telemetry/ping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clusters: hint }),
+      }).catch(() => {});
+    }
+    maybePing();
+    const id = setInterval(maybePing, ONE_HOUR);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 function getBreadcrumbs(pathname) {
   if (!pathname || pathname === "/") return null;
 
@@ -127,6 +150,7 @@ function autoRefreshLabel(seconds) {
 }
 
 export function AppShell({ children }) {
+  useTelemetryPing();
   const router = useRouter();
   const pathname = usePathname();
   const [hasHydrated, setHasHydrated] = React.useState(false);

@@ -4,11 +4,11 @@ import React from "react";
 import { useParams } from "next/navigation";
 import {
   LayoutDashboardIcon, CpuIcon, GitBranchIcon,
-  ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon,
+  ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, ScrollTextIcon,
 } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
-import { calculateAge } from "@/lib/k8s/utils";
+import { calculateAge, formatLabel } from "@/lib/k8s/utils";
 import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +21,13 @@ import { RolloutHistoryTab } from "@/components/deployment-detail/tabs/RolloutHi
 import { BlastRadiusTab }    from "@/components/deployment-detail/tabs/BlastRadiusTab";
 import { EventsTab }         from "@/components/deployment-detail/tabs/EventsTab";
 import { MetadataTab }       from "@/components/deployment-detail/tabs/MetadataTab";
+import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 
 const TABS = [
   { id: "Overview",        icon: LayoutDashboardIcon },
   { id: "Metrics",         icon: ActivityIcon },
   { id: "Resources",       icon: CpuIcon },
+  { id: "Logs",            icon: ScrollTextIcon, live: true },
   { id: "Rollout History", icon: GitBranchIcon },
   { id: "Blast Radius",    icon: ShieldAlertIcon },
   { id: "Dependencies",    icon: ShareIcon },
@@ -111,12 +113,11 @@ export default function DeploymentDetailPage() {
 
               {/* Quick stats — scrollable on mobile */}
               <div className="overflow-x-auto w-full sm:w-auto shrink-0" style={{ scrollbarWidth: "none" }}>
-                <div className="grid grid-cols-5 rounded-xl border border-border overflow-hidden divide-x divide-border min-w-[360px] sm:min-w-0">
+                <div className="grid grid-cols-4 rounded-xl border border-border overflow-hidden divide-x divide-border min-w-[280px] sm:min-w-0">
                   <QuickStat label="Ready"    value={`${ready}/${desired}`} />
                   <QuickStat label="Updated"  value={updated} />
                   <QuickStat label="Age"      value={deployment?.metadata?.creationTimestamp ? calculateAge(deployment.metadata.creationTimestamp) : "—"} />
-                  <QuickStat label="Strategy" value={strategy} />
-                  <QuickStat label="Revision" value={revision ? `#${revision}` : "—"} />
+                  <QuickStat label="Strategy" value={formatLabel(strategy)} />
                 </div>
               </div>
             </div>
@@ -124,7 +125,7 @@ export default function DeploymentDetailPage() {
             {/* Tabs — horizontally scrollable */}
             <div className="flex" style={{ overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none", touchAction: "pan-x", overscrollBehaviorX: "contain" }}>
               <div className="flex gap-0 min-w-max">
-                {TABS.map(({ id, icon: Icon }) => {
+                {TABS.map(({ id, icon: Icon, live }) => {
                   const active = activeTab === id;
                   return (
                     <button
@@ -144,6 +145,7 @@ export default function DeploymentDetailPage() {
                       {id === "Events" && events.length > 0 && (
                         <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>
                       )}
+                      {live && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 inline-block" />}
                     </button>
                   );
                 })}
@@ -158,13 +160,14 @@ export default function DeploymentDetailPage() {
       {/* Tab content */}
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview"        && <OverviewTab       deployment={deployment} replicaSets={replicaSets} pods={pods} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"       && <ResourcesTab      deployment={deployment} />}
+        {activeTab === "Logs"            && <SharedLogsTab pods={pods} />}
         {activeTab === "Rollout History" && <RolloutHistoryTab deployment={deployment} replicaSets={replicaSets} />}
         {activeTab === "Blast Radius"    && <BlastRadiusTab    deployment={deployment} pods={pods} replicaSets={replicaSets} />}
         {activeTab === "Dependencies"    && <DependencyGraph   resourceType="deployment" resource={deployment} />}
         {activeTab === "Events"          && <EventsTab         events={events} />}
         {activeTab === "Metadata"        && <MetadataTab       deployment={deployment} />}
-        {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
       </div>
     </div>
   );
