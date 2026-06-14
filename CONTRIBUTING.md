@@ -1,5 +1,7 @@
 # Contributing to k8lens
 
+**Version: 0.1.0** · [GitHub](https://github.com/CodeScapes-dev/k8lens-app)
+
 Thanks for your interest in contributing. This guide covers how to get set up, the branch/PR workflow, and a few conventions to follow.
 
 ## Prerequisites

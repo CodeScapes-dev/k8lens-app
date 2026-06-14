@@ -47,7 +47,7 @@ export function AboutTab() {
           label="Source"
           value={
             <a
-              href="https://github.com"
+              href="https://github.com/CodeScapes-dev/k8lens-app"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline underline-offset-2 text-sm"
