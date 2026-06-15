@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { extractK8sError, isolateContext, parseKubeconfigString, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
+import { extractK8sError, isBlockedServerUrl, isolateContext, parseKubeconfigString, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
 import { storeCluster } from "@/lib/k8s/cluster-store";
 
 export async function POST(request) {
@@ -38,6 +38,9 @@ export async function POST(request) {
     contexts.map(async (context) => {
       const ctx = isolateContext(kubeConfig, context.name);
       const server = ctx.getCurrentCluster()?.server ?? "";
+      if (isBlockedServerUrl(server)) {
+        return { contextName: context.name, error: "Blocked server URL.", server, status: "error" };
+      }
       try {
         const result = await validateConnection(ctx);
         const serialized = await serializeKubeConfig(ctx);

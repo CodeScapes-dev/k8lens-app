@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { buildManualKubeConfig, extractK8sError, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
+import { buildManualKubeConfig, extractK8sError, isBlockedServerUrl, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
 import { storeCluster } from "@/lib/k8s/cluster-store";
 
 export async function POST(request) {
@@ -13,6 +13,7 @@ export async function POST(request) {
 
   const { apiEndpoint, caData, skipTls, token } = body;
   if (!apiEndpoint?.trim()) return NextResponse.json({ error: "apiEndpoint is required." }, { status: 400 });
+  if (isBlockedServerUrl(apiEndpoint.trim())) return NextResponse.json({ error: "Invalid API endpoint." }, { status: 400 });
   if (!token?.trim()) return NextResponse.json({ error: "token is required." }, { status: 400 });
 
   const kubeConfig = buildManualKubeConfig({
