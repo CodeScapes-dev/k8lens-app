@@ -6,7 +6,6 @@ import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
 import { calculateAge, formatTimestamp, parseK8sResourceValue, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
-import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 
 function kv(label, value) {
   return (
@@ -82,7 +81,7 @@ function ContainerCard({ cs, spec, onLogsClick }) {
   );
 }
 
-export function OverviewTab({ pod, events, detail, onTabChange }) {
+export function OverviewTab({ pod, events, onTabChange }) {
   if (!pod) return null;
   const meta = pod.metadata ?? {};
   const spec = pod.spec ?? {};
@@ -100,7 +99,6 @@ export function OverviewTab({ pod, events, detail, onTabChange }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <DiagnosticsPanel resourceType="pod" data={detail} />
       <CostCard containers={containers} replicas={1} />
     <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4 items-start">
       {/* Left column */}

@@ -5,10 +5,14 @@ import { useParams } from "next/navigation";
 import {
   LayoutDashboardIcon, NetworkIcon, CpuIcon, ScrollTextIcon,
   BellIcon, TagIcon, ShareIcon, ActivityIcon,
+  StethoscopeIcon,
 } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge, getPodStatus, getPodRestarts, parseK8sResourceValue, formatMemory } from "@/lib/k8s/utils";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { OverviewTab } from "@/components/pod-detail/tabs/OverviewTab";
@@ -23,6 +27,7 @@ import { QuickStat } from "@/components/detail/helpers";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Metrics",      icon: ActivityIcon },
   { id: "Networking",   icon: NetworkIcon },
   { id: "Resources",    icon: CpuIcon },
@@ -59,6 +64,7 @@ export default function PodDetailPage() {
 
   const pod = data?.pod ?? null;
   const events = data?.events ?? [];
+  const diagCount = data ? diagnoseResource("pod", data).length : 0;
   const podStatus = pod ? getPodStatus(pod) : null;
   const restarts = pod ? getPodRestarts(pod) : 0;
   const labels = pod?.metadata?.labels ?? {};
@@ -128,6 +134,9 @@ export default function PodDetailPage() {
                       {id === "Events" && events.length > 0 && (
                         <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>
                       )}
+                      {id === "Diagnostics" && diagCount > 0 && (
+                        <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>
+                      )}
                       {live && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 inline-block" />}
                     </button>
                   );
@@ -139,8 +148,18 @@ export default function PodDetailPage() {
       </div>
 
       {/* Tab content */}
+      <DiagnosticsPrompt
+        resourceType="pod"
+        resourceLabel="pod"
+        data={data}
+        uid={pod?.metadata?.uid}
+        activeTab={activeTab}
+        onViewDiagnostics={() => setActiveTab("Diagnostics")}
+      />
+
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview"     && <OverviewTab pod={pod} events={events} detail={data} onTabChange={setActiveTab} />}
+        {activeTab === "Overview"     && <OverviewTab pod={pod} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="pod" data={data} showEmpty />}
         {activeTab === "Metrics"      && <PodMetricsTab pod={pod} namespace={namespace} name={name} />}
         {activeTab === "Networking"   && <NetworkingTab pod={pod} />}
         {activeTab === "Resources"    && <ResourcesTab pod={pod} />}

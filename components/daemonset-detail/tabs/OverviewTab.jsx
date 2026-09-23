@@ -1,13 +1,11 @@
 import { Panel } from "@/components/kl/Panel";
 import { CostCard } from "@/components/cost-estimation/CostCard";
-import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 
-export function OverviewTab({ ds, pods, events, detail }) {
+export function OverviewTab({ ds, pods, events }) {
   const containers = ds?.spec?.template?.spec?.containers ?? [];
 
   return (
     <div className="flex flex-col gap-4">
-      <DiagnosticsPanel resourceType="daemonset" data={detail} />
       <CostCard containers={containers} replicas={pods.length} />
       <Panel title="Status">
         <div className="grid gap-y-2 gap-x-3" style={{ gridTemplateColumns: "minmax(120px, 180px) 1fr", fontSize: 12 }}>

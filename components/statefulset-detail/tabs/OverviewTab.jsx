@@ -1,14 +1,12 @@
 import { Panel } from "@/components/kl/Panel";
 import { CostCard } from "@/components/cost-estimation/CostCard";
-import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 
-export function OverviewTab({ sts, pods, events, detail }) {
+export function OverviewTab({ sts, pods, events }) {
   const containers = sts?.spec?.template?.spec?.containers ?? [];
   const desired = sts?.spec?.replicas ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
-      <DiagnosticsPanel resourceType="statefulset" data={detail} />
       <CostCard containers={containers} replicas={desired} />
       <Panel title="Status">
         <div className="grid gap-y-2 gap-x-3" style={{ gridTemplateColumns: "minmax(120px, 160px) 1fr", fontSize: 12 }}>
