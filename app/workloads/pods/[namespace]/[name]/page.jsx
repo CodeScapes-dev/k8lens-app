@@ -140,7 +140,7 @@ export default function PodDetailPage() {
 
       {/* Tab content */}
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview"     && <OverviewTab pod={pod} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Overview"     && <OverviewTab pod={pod} events={events} detail={data} onTabChange={setActiveTab} />}
         {activeTab === "Metrics"      && <PodMetricsTab pod={pod} namespace={namespace} name={name} />}
         {activeTab === "Networking"   && <NetworkingTab pod={pod} />}
         {activeTab === "Resources"    && <ResourcesTab pod={pod} />}

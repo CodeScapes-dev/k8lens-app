@@ -105,7 +105,7 @@ export default function DaemonSetDetailPage() {
       {ds && <Recommendations resourceType="daemonset" data={data} namespace={namespace} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview"     && <OverviewTab ds={ds} pods={pods} events={events} />}
+        {activeTab === "Overview"     && <OverviewTab ds={ds} pods={pods} events={events} detail={data} />}
         {activeTab === "Metrics"      && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"    && <ResourcesTab containers={containers} pods={pods} />}
         {activeTab === "Logs"         && <SharedLogsTab pods={pods} />}

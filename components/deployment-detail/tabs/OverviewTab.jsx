@@ -5,6 +5,7 @@ import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
 import { calculateAge, formatTimestamp, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 
 function kv(label, value) {
   return (
@@ -32,7 +33,7 @@ function deploymentStatusLabel(dep) {
   return k === "ok" ? "Healthy" : k === "warn" ? "Progressing" : "Degraded";
 }
 
-export function OverviewTab({ deployment, replicaSets = [], pods = [], events = [], onTabChange }) {
+export function OverviewTab({ deployment, replicaSets = [], pods = [], events = [], detail, onTabChange }) {
   if (!deployment) return null;
   const meta = deployment.metadata ?? {};
   const spec = deployment.spec ?? {};
@@ -55,6 +56,7 @@ export function OverviewTab({ deployment, replicaSets = [], pods = [], events = 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <DiagnosticsPanel resourceType="deployment" data={detail} />
       <CostCard containers={containers} replicas={desired} />
     <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4 items-start">
       {/* Left */}

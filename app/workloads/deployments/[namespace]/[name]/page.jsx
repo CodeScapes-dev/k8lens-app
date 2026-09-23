@@ -159,7 +159,7 @@ export default function DeploymentDetailPage() {
 
       {/* Tab content */}
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview"        && <OverviewTab       deployment={deployment} replicaSets={replicaSets} pods={pods} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Overview"        && <OverviewTab       deployment={deployment} replicaSets={replicaSets} pods={pods} events={events} detail={data} onTabChange={setActiveTab} />}
         {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"       && <ResourcesTab      deployment={deployment} />}
         {activeTab === "Logs"            && <SharedLogsTab pods={pods} />}

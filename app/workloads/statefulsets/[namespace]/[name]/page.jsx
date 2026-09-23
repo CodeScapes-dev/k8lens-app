@@ -107,7 +107,7 @@ export default function StatefulSetDetailPage() {
       {ss && <Recommendations resourceType="statefulset" data={data} namespace={namespace} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
-        {activeTab === "Overview"     && <OverviewTab sts={ss} pods={pods} events={events} />}
+        {activeTab === "Overview"     && <OverviewTab sts={ss} pods={pods} events={events} detail={data} />}
         {activeTab === "Metrics"      && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"    && <ResourcesTab containers={containers} sts={ss} />}
         {activeTab === "Logs"         && <SharedLogsTab pods={pods} />}

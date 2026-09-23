@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 
+const isUnscheduledPending = (pod) => pod?.status?.phase === "Pending" && !pod?.spec?.nodeName;
+
+// Node list is only needed to explain unschedulable pods; skip the cluster-wide call otherwise.
+// A rejected list (e.g. RBAC without cluster-scoped `nodes`) degrades to `nodesError` instead of failing the payload.
+async function fetchNodesIfPending(clients, pods) {
+  if (!pods.some(isUnscheduledPending)) return {};
+  const [nodesRes] = await Promise.allSettled([clients.core.listNode()]);
+  return nodesRes.status === "fulfilled" ? { nodes: extractItems(nodesRes.value) } : { nodesError: true };
+}
+
+function warningEventsForPods(events, pods) {
+  const names = new Set(pods.map((p) => p?.metadata?.name));
+  return events.filter((e) => {
+    const target = e?.involvedObject ?? e?.regarding;
+    return e?.type === "Warning" && target?.kind === "Pod" && names.has(target?.name);
+  });
+}
+
 const handlers = {
   pod: async (clients, { namespace, name }) => {
     const [podRes, eventsRes] = await Promise.allSettled([
@@ -11,7 +29,7 @@ const handlers = {
     const pod = podRes?.status === "fulfilled" ? extractBody(podRes.value) : null;
     if (!pod) throw new Error(`Pod ${namespace}/${name} not found`);
     const events = eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [];
-    return { pod, events };
+    return { pod, events, ...(await fetchNodesIfPending(clients, [pod])) };
   },
 
   deployment: async (clients, { namespace, name }) => {
@@ -31,10 +49,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
       .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "Deployment")
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { deployment, replicaSets, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { deployment, replicaSets, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   statefulset: async (clients, { namespace, name }) => {
@@ -49,10 +69,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
       .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "StatefulSet")
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { statefulSet, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { statefulSet, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   daemonset: async (clients, { namespace, name }) => {
@@ -67,10 +89,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
       .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "DaemonSet")
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { daemonSet, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { daemonSet, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   replicaset: async (clients, { namespace, name }) => {

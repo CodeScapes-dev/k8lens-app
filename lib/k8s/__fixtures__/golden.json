@@ -1,0 +1,184 @@
+{
+  "health": {
+    "healthy": {
+      "score": 100,
+      "signals": []
+    },
+    "crashLoopApp": {
+      "score": 70,
+      "signals": [
+        {
+          "label": "HighRestartCount",
+          "explanation": "Container has restarted 25 times — likely a crash loop",
+          "penalty": 30
+        }
+      ]
+    },
+    "oom": {
+      "score": 55,
+      "signals": [
+        {
+          "label": "ElevatedRestartCount",
+          "explanation": "Container has restarted 7 times",
+          "penalty": 15
+        },
+        {
+          "label": "OOMKilled",
+          "explanation": "Pod was killed due to memory limit being exceeded",
+          "penalty": 30
+        }
+      ]
+    },
+    "oomEventOnly": {
+      "score": 70,
+      "signals": [
+        {
+          "label": "OOMKilled",
+          "explanation": "Pod was killed due to memory limit being exceeded",
+          "penalty": 30
+        }
+      ]
+    },
+    "multiContainer": {
+      "score": 85,
+      "signals": [
+        {
+          "label": "ElevatedRestartCount",
+          "explanation": "Container has restarted 11 times",
+          "penalty": 15
+        }
+      ]
+    },
+    "configMissing": {
+      "score": 100,
+      "signals": []
+    },
+    "initCrash": {
+      "score": 100,
+      "signals": []
+    },
+    "cleanExit": {
+      "score": 100,
+      "signals": []
+    },
+    "pendingOld": {
+      "score": 70,
+      "signals": [
+        {
+          "label": "StuckInPending",
+          "explanation": "Pod has been in Pending state for more than 5 minutes",
+          "penalty": 30
+        }
+      ]
+    },
+    "pendingYoung": {
+      "score": 100,
+      "signals": []
+    },
+    "failed": {
+      "score": 100,
+      "signals": []
+    }
+  },
+  "restarts": {
+    "totalRestarts": 51,
+    "crashLoopPods": [
+      {
+        "pod": "crash-app",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 25
+      },
+      {
+        "pod": "oom",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 7
+      },
+      {
+        "pod": "multi",
+        "namespace": "demo",
+        "container": "sidecar",
+        "restarts": 9
+      },
+      {
+        "pod": "config-missing",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 4
+      },
+      {
+        "pod": "exit-zero",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 3
+      }
+    ]
+  },
+  "unhealthy": [
+    {
+      "kind": "Pod",
+      "name": "crash-app",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "oom",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "multi",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "config-missing",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "exit-zero",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "failed",
+      "namespace": "demo",
+      "reason": "Failed",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "pending-old",
+      "namespace": "demo",
+      "reason": "Pending",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "warning"
+    },
+    {
+      "kind": "Pod",
+      "name": "pending-young",
+      "namespace": "demo",
+      "reason": "Pending",
+      "age": "<now>",
+      "severity": "warning"
+    }
+  ]
+}
