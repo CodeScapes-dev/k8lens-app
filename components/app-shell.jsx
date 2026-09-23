@@ -8,7 +8,6 @@ import {
   SearchIcon,
   DownloadIcon,
   RefreshCwIcon,
-  TimerIcon,
 } from "lucide-react";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -159,6 +158,8 @@ export function AppShell({ children }) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [countdown, setCountdown] = React.useState(0);
   const [progressKey, setProgressKey] = React.useState(0);
+  const [spinning, setSpinning] = React.useState(false);
+  const spinTimer = React.useRef(null);
 
   const { clusters, preferences } = useClusterStore();
   const autoRefresh = preferences?.autoRefresh ?? 0;
@@ -207,6 +208,23 @@ export function AppShell({ children }) {
       router.replace("/connect");
     }
   }, [hasHydrated, clusters.length, pathname, router]);
+
+  React.useEffect(() => {
+    const stop = () => setSpinning(false);
+    window.addEventListener("kl:refreshed", stop);
+    return () => {
+      window.removeEventListener("kl:refreshed", stop);
+      clearTimeout(spinTimer.current);
+    };
+  }, []);
+
+  const handleRefreshNow = () => {
+    setSpinning(true);
+    clearTimeout(spinTimer.current);
+    // Fallback for pages whose data doesn't announce completion.
+    spinTimer.current = setTimeout(() => setSpinning(false), 3000);
+    window.dispatchEvent(new CustomEvent("kl:refresh-now"));
+  };
 
   // Countdown timer that stays in sync with auto-refresh
   React.useEffect(() => {
@@ -301,13 +319,9 @@ export function AppShell({ children }) {
                   "shrink-0 gap-1.5 px-2 h-8 text-xs text-foreground",
                   autoRefresh > 0 && "text-foreground",
                 )}
-                onClick={() => openSettings("general")}
+                onClick={handleRefreshNow}
               >
-                {autoRefresh > 0 ? (
-                  <TimerIcon className="size-3.5" />
-                ) : (
-                  <RefreshCwIcon className="size-3.5" />
-                )}
+                <RefreshCwIcon className={cn("size-3.5", spinning && "animate-spin")} />
                 <span className="hidden sm:inline">
                   {autoRefresh > 0 ? `in ${countdown}s` : "Refresh"}
                 </span>
@@ -315,8 +329,8 @@ export function AppShell({ children }) {
             </TooltipTrigger>
             <TooltipContent className="text-xs">
               {autoRefresh > 0
-                ? `Auto-refresh every ${autoRefreshLabel(autoRefresh)} · next in ${countdown}s · click to change`
-                : "Auto-refresh off · click to configure"}
+                ? `Refresh now · auto-refresh every ${autoRefreshLabel(autoRefresh)} (next in ${countdown}s)`
+                : "Refresh now · auto-refresh is off (set an interval in Settings)"}
             </TooltipContent>
           </Tooltip>
 
