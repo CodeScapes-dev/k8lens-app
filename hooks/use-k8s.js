@@ -94,6 +94,12 @@ export function useK8sResource(apiGroup, resource, options = {}) {
     return () => clearInterval(id);
   }, [fetchData, autoRefresh]);
 
+  React.useEffect(() => {
+    const onRefreshNow = () => fetchData();
+    window.addEventListener("kl:refresh-now", onRefreshNow);
+    return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
+  }, [fetchData]);
+
   return { data, loading, refreshing, error, refresh: fetchData, pagination };
 }
 
@@ -106,10 +112,12 @@ export function useK8sDetail(type, namespace, name) {
   const [data, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
+  const hasLoaded = React.useRef(false);
 
   const fetchData = React.useCallback(async () => {
     if (!activeContext || !name) return;
-    setLoading(true);
+    const isBackground = hasLoaded.current;
+    if (!isBackground) setLoading(true);
     setError(null);
     try {
       const cluster = clusters.find((c) => c.contextName === activeContext);
@@ -129,6 +137,8 @@ export function useK8sDetail(type, namespace, name) {
         throw new Error(err?.message ?? err ?? "Request failed");
       }
       setData(json);
+      hasLoaded.current = true;
+      if (isBackground) window.dispatchEvent(new CustomEvent("kl:refreshed"));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -136,6 +146,10 @@ export function useK8sDetail(type, namespace, name) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeContext, clusters, type, namespace, name]);
+
+  React.useEffect(() => {
+    hasLoaded.current = false;
+  }, [activeContext, type, namespace, name]);
 
   React.useEffect(() => {
     React.startTransition(() => { fetchData(); });
@@ -146,6 +160,12 @@ export function useK8sDetail(type, namespace, name) {
     const id = setInterval(fetchData, autoRefresh * 1000);
     return () => clearInterval(id);
   }, [fetchData, autoRefresh]);
+
+  React.useEffect(() => {
+    const onRefreshNow = () => fetchData();
+    window.addEventListener("kl:refresh-now", onRefreshNow);
+    return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
+  }, [fetchData]);
 
   return { data, loading, error, refresh: fetchData };
 }

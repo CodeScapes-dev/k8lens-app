@@ -67,6 +67,12 @@ export function useDashboardData() {
     return () => clearInterval(id);
   }, [fetchData, autoRefresh]);
 
+  React.useEffect(() => {
+    const onRefreshNow = () => fetchData();
+    window.addEventListener("kl:refresh-now", onRefreshNow);
+    return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
+  }, [fetchData]);
+
   const aggregated = React.useMemo(() => {
     if (!raw) return null;
     const { nodes, pods, deployments, statefulSets, daemonSets, events, jobs, cronJobs, ingresses, services, namespaces } = raw;
