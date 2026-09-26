@@ -46,5 +46,11 @@ export function useTopology(options = {}) {
     React.startTransition(() => { fetchTopology(); });
   }, [fetchTopology]);
 
+  React.useEffect(() => {
+    const onRefreshNow = () => fetchTopology();
+    window.addEventListener("kl:refresh-now", onRefreshNow);
+    return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
+  }, [fetchTopology]);
+
   return { data, loading, error, refresh: fetchTopology };
 }
