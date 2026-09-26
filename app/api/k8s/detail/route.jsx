@@ -115,10 +115,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
       .filter((e) => isEventFor(e, "ReplicaSet", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { replicaSet, pods, events };
+    return { replicaSet, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   replicationcontroller: async (clients, { namespace, name }) => {
@@ -133,10 +134,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "ReplicationController")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "ReplicationController", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { replicationController, pods, events };
+    return { replicationController, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   job: async (clients, { namespace, name }) => {
@@ -151,10 +153,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
       .filter((e) => isEventFor(e, "Job", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { job, pods, events };
+    return { job, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   cronjob: async (clients, { namespace, name }) => {
