@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon } from "lucide-react";
+import { LayoutDashboardIcon, ServerIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, StethoscopeIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { KLStatus } from "@/components/kl/Status";
@@ -19,10 +19,14 @@ import { PodsTab } from "@/components/node-detail/tabs/PodsTab";
 import { MetricsTab } from "@/components/node-detail/tabs/MetricsTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Metrics", icon: ActivityIcon },
   { id: "Pods", icon: ServerIcon },
   { id: "Blast Radius", icon: ShieldAlertIcon },
@@ -34,6 +38,7 @@ const TABS = [
 export default function NodeDetailPage() {
   const { name } = useParams();
   const { data, loading, error, refresh } = useK8sDetail("node", null, name);
+  const diagCount = data ? diagnoseResource("node", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const node = data?.node ?? null;
@@ -95,6 +100,7 @@ export default function NodeDetailPage() {
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
                     </button>
                   );
@@ -108,6 +114,15 @@ export default function NodeDetailPage() {
       {node && <Recommendations resourceType="node" data={data} namespace={null} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="node"
+          resourceLabel="Node"
+          data={data}
+          uid={data?.node?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="node" data={data} showEmpty />}
         {activeTab === "Overview" && <OverviewTab node={node} pods={pods} />}
         {activeTab === "Metrics" && <MetricsTab nodeName={name} allocatable={allocatable} />}
         {activeTab === "Pods" && <PodsTab pods={pods} />}
