@@ -107,7 +107,7 @@ const ICON_MAP = {
   Package: PackageIcon,
 };
 
-function NavIcon({ name, className }) {
+export function NavIcon({ name, className }) {
   const Icon = ICON_MAP[name];
   return Icon ? <Icon className={cn("size-4", className)} /> : null;
 }
