@@ -26,6 +26,11 @@ const slimPod = (pod) => ({
   },
 });
 
+const toIngressClassSummary = (c) => ({
+  name: c?.metadata?.name,
+  isDefault: c?.metadata?.annotations?.["ingressclass.kubernetes.io/is-default-class"] === "true",
+});
+
 const isUnscheduledPending = (pod) => pod?.status?.phase === "Pending" && !pod?.spec?.nodeName;
 
 // Node list is only needed to explain unschedulable pods; skip the cluster-wide call otherwise.
@@ -330,39 +335,72 @@ const handlers = {
   },
 
   ingress: async (clients, { namespace, name }) => {
-    const [ingressRes, eventsRes] = await Promise.allSettled([
+    const [ingressRes, eventsRes, servicesRes, classesRes] = await Promise.allSettled([
       clients.networking.readNamespacedIngress({ namespace, name }),
       clients.events.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedService({ namespace }),
+      clients.networking.listIngressClass(),
     ]);
     const ingress = ingressRes?.status === "fulfilled" ? extractBody(ingressRes.value) : null;
     if (!ingress) throw new Error(`Ingress ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "Ingress", name));
-    return { ingress, events };
+    // Existence only: TLS secret contents are never read into the response.
+    const tlsSecrets = {};
+    const tlsNames = [...new Set((ingress?.spec?.tls ?? []).map((t) => t?.secretName).filter(Boolean))];
+    await Promise.all(
+      tlsNames.map(async (secretName) => {
+        try {
+          await clients.core.readNamespacedSecret({ namespace, name: secretName });
+          tlsSecrets[secretName] = true;
+        } catch (err) {
+          tlsSecrets[secretName] = err?.code === 404 || err?.statusCode === 404 ? false : null;
+        }
+      }),
+    );
+    return {
+      ingress,
+      events,
+      tlsSecrets,
+      services: servicesRes?.status === "fulfilled"
+        ? extractItems(servicesRes.value).map((s) => ({ name: s?.metadata?.name, ports: (s?.spec?.ports ?? []).map((p) => ({ port: p.port, name: p.name })) }))
+        : undefined,
+      ingressClasses: classesRes?.status === "fulfilled" ? extractItems(classesRes.value).map(toIngressClassSummary) : undefined,
+    };
   },
 
   ingressclass: async (clients, { name }) => {
-    const [icRes, eventsRes] = await Promise.allSettled([
+    const [icRes, eventsRes, allClassesRes] = await Promise.allSettled([
       clients.networking.readIngressClass({ name }),
       clients.events.listEventForAllNamespaces(),
+      clients.networking.listIngressClass(),
     ]);
     const ingressClass = icRes?.status === "fulfilled" ? extractBody(icRes.value) : null;
     if (!ingressClass) throw new Error(`IngressClass ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "IngressClass", name));
-    return { ingressClass, events };
+    return {
+      ingressClass,
+      events,
+      allClasses: allClassesRes?.status === "fulfilled" ? extractItems(allClassesRes.value).map(toIngressClassSummary) : undefined,
+    };
   },
 
   networkpolicy: async (clients, { namespace, name }) => {
-    const [npRes, eventsRes] = await Promise.allSettled([
+    const [npRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.networking.readNamespacedNetworkPolicy({ namespace, name }),
       clients.events.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const networkPolicy = npRes?.status === "fulfilled" ? extractBody(npRes.value) : null;
     if (!networkPolicy) throw new Error(`NetworkPolicy ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "NetworkPolicy", name));
-    return { networkPolicy, events };
+    return {
+      networkPolicy,
+      events,
+      pods: podsRes?.status === "fulfilled" ? extractItems(podsRes.value).map(slimPod) : undefined,
+    };
   },
 
   pv: async (clients, { name }) => {
