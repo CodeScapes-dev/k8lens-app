@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { NavDrawer } from "@/components/nav-drawer";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
+import { TopNav } from "@/components/top-nav";
 import { SearchDialog } from "@/components/search-dialog";
 import { navigation } from "@/data/navigation";
 import { useClusterStore } from "@/stores/clusterStore";
@@ -163,6 +164,12 @@ export function AppShell({ children }) {
 
   const { clusters, preferences } = useClusterStore();
   const autoRefresh = preferences?.autoRefresh ?? 0;
+  const navStyle = preferences?.navStyle ?? "vertical";
+  const density = preferences?.density ?? "comfortable";
+
+  React.useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
 
   React.useEffect(() => {
     useClusterStore.persist.rehydrate();
@@ -266,23 +273,28 @@ export function AppShell({ children }) {
 
   return (
     <>
-      <NavDrawer
-        onAddCluster={() => router.push("/connect")}
-        onOpenSettings={openSettings}
-      />
+      {navStyle === "vertical" && (
+        <NavDrawer
+          onAddCluster={() => router.push("/connect")}
+          onOpenSettings={openSettings}
+        />
+      )}
 
-      <SidebarInset>
+      <SidebarInset className={cn(navStyle === "horizontal" && "md:m-2 md:overflow-hidden md:rounded-xl md:shadow-sm")}>
+        {navStyle === "horizontal" && <TopNav onAddCluster={() => router.push("/connect")} />}
         <style>{`@keyframes kl-progress { from { width: 100%; } to { width: 0%; } }`}</style>
         <header
           className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2 shrink-0 h-[52px] rounded-t-xl"
           style={{ position: "relative" }}
         >
-          <Tooltip delayDuration={400}>
-            <TooltipTrigger asChild>
-              <SidebarTrigger className="text-foreground" />
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">Toggle sidebar</TooltipContent>
-          </Tooltip>
+          {navStyle === "vertical" && (
+            <Tooltip delayDuration={400}>
+              <TooltipTrigger asChild>
+                <SidebarTrigger className="text-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Toggle sidebar</TooltipContent>
+            </Tooltip>
+          )}
 
           <HeaderBreadcrumbs pathname={pathname} />
 
