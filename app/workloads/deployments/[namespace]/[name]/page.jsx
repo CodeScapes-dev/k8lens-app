@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import {
   LayoutDashboardIcon, CpuIcon, GitBranchIcon,
   ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, ScrollTextIcon,
+  StethoscopeIcon,
 } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
@@ -12,6 +13,9 @@ import { calculateAge, formatLabel } from "@/lib/k8s/utils";
 import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuickStat } from "@/components/detail/helpers";
 import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
@@ -25,6 +29,7 @@ import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 
 const TABS = [
   { id: "Overview",        icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Metrics",         icon: ActivityIcon },
   { id: "Resources",       icon: CpuIcon },
   { id: "Logs",            icon: ScrollTextIcon, live: true },
@@ -55,6 +60,7 @@ export default function DeploymentDetailPage() {
   const replicaSets = data?.replicaSets ?? [];
   const pods        = data?.pods        ?? [];
   const events      = data?.events      ?? [];
+  const diagCount = data ? diagnoseResource("deployment", data).length : 0;
 
   const desired   = deployment?.spec?.replicas ?? 0;
   const ready     = deployment?.status?.readyReplicas ?? 0;
@@ -145,6 +151,9 @@ export default function DeploymentDetailPage() {
                       {id === "Events" && events.length > 0 && (
                         <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>
                       )}
+                      {id === "Diagnostics" && diagCount > 0 && (
+                        <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>
+                      )}
                       {live && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 inline-block" />}
                     </button>
                   );
@@ -158,8 +167,18 @@ export default function DeploymentDetailPage() {
       {deployment && <Recommendations resourceType="deployment" data={data} namespace={namespace} name={name} />}
 
       {/* Tab content */}
+      <DiagnosticsPrompt
+        resourceType="deployment"
+        resourceLabel="deployment"
+        data={data}
+        uid={deployment?.metadata?.uid}
+        activeTab={activeTab}
+        onViewDiagnostics={() => setActiveTab("Diagnostics")}
+      />
+
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview"        && <OverviewTab       deployment={deployment} replicaSets={replicaSets} pods={pods} events={events} onTabChange={setActiveTab} />}
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="deployment" data={data} showEmpty />}
         {activeTab === "Metrics"         && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"       && <ResourcesTab      deployment={deployment} />}
         {activeTab === "Logs"            && <SharedLogsTab pods={pods} />}

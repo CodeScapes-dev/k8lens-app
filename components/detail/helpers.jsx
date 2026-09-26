@@ -1,4 +1,7 @@
+"use client";
+
 import { KLBadge } from "@/components/kl/Badge";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { calculateAge } from "@/lib/k8s/utils";
 
 export function QuickStat({ label, value }) {
@@ -11,6 +14,7 @@ export function QuickStat({ label, value }) {
 }
 
 export function ConditionsTimeline({ conditions, getStatus, descriptions = {} }) {
+  const t = useTimeFormat();
   const sorted = [...conditions].sort((a, b) => {
     if (!a.lastTransitionTime) return 1;
     if (!b.lastTransitionTime) return -1;
@@ -39,7 +43,7 @@ export function ConditionsTimeline({ conditions, getStatus, descriptions = {} })
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                   {c.lastTransitionTime && (
                     <span style={{ fontSize: 11, color: "var(--kl-text-faint)" }}>
-                      {new Date(c.lastTransitionTime).toLocaleString()} · {calculateAge(c.lastTransitionTime)} ago
+                      {t.dateTime(c.lastTransitionTime)} · {calculateAge(c.lastTransitionTime)} ago
                     </span>
                   )}
                   {descriptions[c.type] && (

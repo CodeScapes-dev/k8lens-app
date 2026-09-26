@@ -62,13 +62,12 @@ export function AppearanceTab() {
         </div>
       </div>
 
-      {/* TODO: Table density — not yet functional, hidden until implemented
       <Separator />
       <div className="flex items-start justify-between gap-4">
         <div>
           <Label className="text-sm font-medium">Table density</Label>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Controls row height in resource tables.
+            Controls row height in resource tables and lists.
           </p>
         </div>
         <div className="flex gap-2">
@@ -92,9 +91,7 @@ export function AppearanceTab() {
           ))}
         </div>
       </div>
-      */}
 
-      {/* TODO: Navigation style — not yet functional, hidden until implemented
       <Separator />
       <div className="flex flex-col gap-3">
         <div>
@@ -129,7 +126,6 @@ export function AppearanceTab() {
           })}
         </div>
       </div>
-      */}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import React from "react";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
-import { calculateAge, formatTimestamp, parseK8sResourceValue, formatLabel } from "@/lib/k8s/utils";
+import { calculateAge, parseK8sResourceValue, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
 
 function kv(label, value) {
@@ -82,6 +83,7 @@ function ContainerCard({ cs, spec, onLogsClick }) {
 }
 
 export function OverviewTab({ pod, events, onTabChange }) {
+  const t = useTimeFormat();
   if (!pod) return null;
   const meta = pod.metadata ?? {};
   const spec = pod.spec ?? {};
@@ -144,7 +146,7 @@ export function OverviewTab({ pod, events, onTabChange }) {
               <div key={c.type} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <KLStatus kind={c.status === "True" ? "ok" : "err"} dotOnly />
                 <span style={{ fontSize: 12.5, flex: 1 }}>{c.type.replace(/([A-Z])/g, " $1").trim()}</span>
-                <span style={{ fontSize: 11, color: "var(--kl-text-faint)" }}>{c.lastTransitionTime ? formatTimestamp(c.lastTransitionTime) : ""}</span>
+                <span style={{ fontSize: 11, color: "var(--kl-text-faint)" }}>{c.lastTransitionTime ? t.timestamp(c.lastTransitionTime) : ""}</span>
               </div>
             ))}
           </div>

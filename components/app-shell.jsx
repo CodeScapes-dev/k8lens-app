@@ -8,7 +8,6 @@ import {
   SearchIcon,
   DownloadIcon,
   RefreshCwIcon,
-  TimerIcon,
 } from "lucide-react";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { NavDrawer } from "@/components/nav-drawer";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
+import { TopNav } from "@/components/top-nav";
 import { SearchDialog } from "@/components/search-dialog";
 import { navigation } from "@/data/navigation";
 import { useClusterStore } from "@/stores/clusterStore";
@@ -159,9 +159,17 @@ export function AppShell({ children }) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [countdown, setCountdown] = React.useState(0);
   const [progressKey, setProgressKey] = React.useState(0);
+  const [spinning, setSpinning] = React.useState(false);
+  const spinTimer = React.useRef(null);
 
   const { clusters, preferences } = useClusterStore();
   const autoRefresh = preferences?.autoRefresh ?? 0;
+  const navStyle = preferences?.navStyle ?? "vertical";
+  const density = preferences?.density ?? "comfortable";
+
+  React.useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
 
   React.useEffect(() => {
     useClusterStore.persist.rehydrate();
@@ -208,6 +216,23 @@ export function AppShell({ children }) {
     }
   }, [hasHydrated, clusters.length, pathname, router]);
 
+  React.useEffect(() => {
+    const stop = () => setSpinning(false);
+    window.addEventListener("kl:refreshed", stop);
+    return () => {
+      window.removeEventListener("kl:refreshed", stop);
+      clearTimeout(spinTimer.current);
+    };
+  }, []);
+
+  const handleRefreshNow = () => {
+    setSpinning(true);
+    clearTimeout(spinTimer.current);
+    // Fallback for pages whose data doesn't announce completion.
+    spinTimer.current = setTimeout(() => setSpinning(false), 3000);
+    window.dispatchEvent(new CustomEvent("kl:refresh-now"));
+  };
+
   // Countdown timer that stays in sync with auto-refresh
   React.useEffect(() => {
     if (!autoRefresh) {
@@ -248,23 +273,28 @@ export function AppShell({ children }) {
 
   return (
     <>
-      <NavDrawer
-        onAddCluster={() => router.push("/connect")}
-        onOpenSettings={openSettings}
-      />
+      {navStyle === "vertical" && (
+        <NavDrawer
+          onAddCluster={() => router.push("/connect")}
+          onOpenSettings={openSettings}
+        />
+      )}
 
-      <SidebarInset>
+      <SidebarInset className={cn(navStyle === "horizontal" && "md:m-2 md:overflow-hidden md:rounded-xl md:shadow-sm")}>
+        {navStyle === "horizontal" && <TopNav onAddCluster={() => router.push("/connect")} />}
         <style>{`@keyframes kl-progress { from { width: 100%; } to { width: 0%; } }`}</style>
         <header
           className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-4 py-2 shrink-0 h-[52px] rounded-t-xl"
           style={{ position: "relative" }}
         >
-          <Tooltip delayDuration={400}>
-            <TooltipTrigger asChild>
-              <SidebarTrigger className="text-foreground" />
-            </TooltipTrigger>
-            <TooltipContent className="text-xs">Toggle sidebar</TooltipContent>
-          </Tooltip>
+          {navStyle === "vertical" && (
+            <Tooltip delayDuration={400}>
+              <TooltipTrigger asChild>
+                <SidebarTrigger className="text-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">Toggle sidebar</TooltipContent>
+            </Tooltip>
+          )}
 
           <HeaderBreadcrumbs pathname={pathname} />
 
@@ -301,13 +331,9 @@ export function AppShell({ children }) {
                   "shrink-0 gap-1.5 px-2 h-8 text-xs text-foreground",
                   autoRefresh > 0 && "text-foreground",
                 )}
-                onClick={() => openSettings("general")}
+                onClick={handleRefreshNow}
               >
-                {autoRefresh > 0 ? (
-                  <TimerIcon className="size-3.5" />
-                ) : (
-                  <RefreshCwIcon className="size-3.5" />
-                )}
+                <RefreshCwIcon className={cn("size-3.5", spinning && "animate-spin")} />
                 <span className="hidden sm:inline">
                   {autoRefresh > 0 ? `in ${countdown}s` : "Refresh"}
                 </span>
@@ -315,8 +341,8 @@ export function AppShell({ children }) {
             </TooltipTrigger>
             <TooltipContent className="text-xs">
               {autoRefresh > 0
-                ? `Auto-refresh every ${autoRefreshLabel(autoRefresh)} · next in ${countdown}s · click to change`
-                : "Auto-refresh off · click to configure"}
+                ? `Refresh now · auto-refresh every ${autoRefreshLabel(autoRefresh)} (next in ${countdown}s)`
+                : "Refresh now · auto-refresh is off (set an interval in Settings)"}
             </TooltipContent>
           </Tooltip>
 

@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, DatabaseIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, DatabaseIcon, BellIcon, TagIcon, ShareIcon, StethoscopeIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
@@ -11,10 +11,14 @@ import { OverviewTab } from "@/components/storageclass-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/storageclass-detail/tabs/ResourcesTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Resources", icon: DatabaseIcon },
   { id: "Dependencies", icon: ShareIcon },
   { id: "Events", icon: BellIcon },
@@ -24,6 +28,7 @@ const TABS = [
 export default function StorageClassDetailPage() {
   const { name } = useParams();
   const { data, loading, error, refresh } = useK8sDetail("storageclass", null, name);
+  const diagCount = data ? diagnoseResource("storageclass", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
   const sc = data?.storageClass ?? null;
   const pvs = data?.pvs ?? [];
@@ -72,6 +77,7 @@ export default function StorageClassDetailPage() {
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
                     </button>
                   );
@@ -82,6 +88,15 @@ export default function StorageClassDetailPage() {
         )}
       </div>
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="storageclass"
+          resourceLabel="Storage Class"
+          data={data}
+          uid={data?.storageClass?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="storageclass" data={data} showEmpty />}
         {activeTab === "Overview" && <OverviewTab sc={sc} pvs={pvs} pvcs={pvcs} workloads={workloads} />}
         {activeTab === "Resources" && <ResourcesTab pvs={pvs} pvcs={pvcs} />}
         {activeTab === "Dependencies" && <DependencyGraph resourceType="storageclass" resource={sc} />}

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { KLBadge } from "@/components/kl/Badge";
@@ -40,12 +41,13 @@ function formatDuration(secs) {
 }
 
 function CustomTooltip({ active, payload }) {
+  const t = useTimeFormat();
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   return (
     <div style={{ background: "var(--kl-surface)", border: "1px solid var(--kl-border)", borderRadius: 8, padding: "10px 14px", fontSize: 11.5 }}>
       <div style={{ fontWeight: 600, marginBottom: 4, color: statusColor(d.status) }}>{d.status}</div>
-      <div style={{ color: "var(--kl-text-muted)" }}>Started: {d.startTime ? new Date(d.startTime).toLocaleString() : "—"}</div>
+      <div style={{ color: "var(--kl-text-muted)" }}>Started: {d.startTime ? t.dateTime(d.startTime) : "—"}</div>
       <div style={{ color: "var(--kl-text-muted)" }}>Duration: {formatDuration(d.duration)}</div>
       {d.podName && <div style={{ color: "var(--kl-text-muted)" }}>Pod: {d.podName}</div>}
     </div>
@@ -53,6 +55,7 @@ function CustomTooltip({ active, payload }) {
 }
 
 export function RunHistoryTab({ jobs = [] }) {
+  const t = useTimeFormat();
   const router = useRouter();
 
   const sorted = [...jobs].sort((a, b) =>
@@ -72,7 +75,7 @@ export function RunHistoryTab({ jobs = [] }) {
     const duration = jobDuration(job);
     const podName = (job?.status?.jobPods?.[0] ?? job?.metadata?.name);
     return {
-      name: new Date(job?.status?.startTime ?? 0).toLocaleDateString(),
+      name: t.date(job?.status?.startTime ?? 0),
       duration: duration ?? 0,
       status,
       startTime: job?.status?.startTime,
@@ -95,7 +98,7 @@ export function RunHistoryTab({ jobs = [] }) {
           { label: "Total Runs", value: sorted.length },
           { label: "Success Rate", value: `${successRate}%` },
           { label: "Avg Duration", value: formatDuration(avgDuration) },
-          { label: "Last Run", value: lastRun ? new Date(lastRun).toLocaleDateString() : "—" },
+          { label: "Last Run", value: lastRun ? t.date(lastRun) : "—" },
         ].map(({ label, value }, i) => (
           <div key={i} style={{ flex: 1, padding: "12px 0", textAlign: "center", borderRight: i < 3 ? "1px solid var(--kl-border)" : "none" }}>
             <div style={{ fontSize: 10.5, color: "var(--kl-text-muted)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>{label}</div>
@@ -142,7 +145,7 @@ export function RunHistoryTab({ jobs = [] }) {
               const tone = status === "Succeeded" ? "ok" : status === "Failed" ? "err" : "warn";
               return (
                 <TableRow key={i}>
-                  <TableCell className="font-mono text-xs">{job?.status?.startTime ? new Date(job.status.startTime).toLocaleString() : "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{job?.status?.startTime ? t.dateTime(job.status.startTime) : "—"}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{formatDuration(duration)}</TableCell>
                   <TableCell><KLBadge tone={tone}>{status}</KLBadge></TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate">{podName}</TableCell>

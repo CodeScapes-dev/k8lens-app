@@ -1,6 +1,10 @@
+"use client";
+
 import { Panel } from "@/components/kl/Panel";
+import { useTimeFormat } from "@/hooks/use-time-format";
 
 export function OverviewTab({ cj }) {
+  const t = useTimeFormat();
   const suspended = cj?.spec?.suspend ?? false;
 
   return (
@@ -11,7 +15,7 @@ export function OverviewTab({ cj }) {
         <span style={{ color: "var(--kl-text-muted)" }}>Suspend</span><span className="kl-mono">{suspended ? "Yes" : "No"}</span>
         <span style={{ color: "var(--kl-text-muted)" }}>Successful Jobs History</span><span className="kl-mono">{cj?.spec?.successfulJobsHistoryLimit ?? 3}</span>
         <span style={{ color: "var(--kl-text-muted)" }}>Failed Jobs History</span><span className="kl-mono">{cj?.spec?.failedJobsHistoryLimit ?? 1}</span>
-        <span style={{ color: "var(--kl-text-muted)" }}>Last Schedule Time</span><span className="kl-mono">{cj?.status?.lastScheduleTime ? new Date(cj.status.lastScheduleTime).toLocaleString() : "—"}</span>
+        <span style={{ color: "var(--kl-text-muted)" }}>Last Schedule Time</span><span className="kl-mono">{cj?.status?.lastScheduleTime ? t.dateTime(cj.status.lastScheduleTime) : "—"}</span>
       </div>
     </Panel>
   );

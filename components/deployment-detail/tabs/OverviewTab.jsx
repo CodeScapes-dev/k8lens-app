@@ -1,9 +1,10 @@
 "use client";
 
 import { Panel } from "@/components/kl/Panel";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { KLBadge } from "@/components/kl/Badge";
 import { KLStatus } from "@/components/kl/Status";
-import { calculateAge, formatTimestamp, formatLabel } from "@/lib/k8s/utils";
+import { calculateAge, formatLabel } from "@/lib/k8s/utils";
 import { CostCard } from "@/components/cost-estimation/CostCard";
 
 function kv(label, value) {
@@ -33,6 +34,7 @@ function deploymentStatusLabel(dep) {
 }
 
 export function OverviewTab({ deployment, replicaSets = [], pods = [], events = [], onTabChange }) {
+  const t = useTimeFormat();
   if (!deployment) return null;
   const meta = deployment.metadata ?? {};
   const spec = deployment.spec ?? {};
@@ -100,7 +102,7 @@ export function OverviewTab({ deployment, replicaSets = [], pods = [], events = 
                 <KLStatus kind={c.status === "True" ? "ok" : "err"} dotOnly />
                 <span style={{ fontSize: 12.5, flex: 1 }}>{c.type}</span>
                 <span style={{ fontSize: 11, color: "var(--kl-text-faint)" }}>
-                  {c.lastUpdateTime ? formatTimestamp(c.lastUpdateTime) : ""}
+                  {c.lastUpdateTime ? t.timestamp(c.lastUpdateTime) : ""}
                 </span>
               </div>
             ))}

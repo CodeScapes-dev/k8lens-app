@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, DatabaseIcon, GitCompareIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, DatabaseIcon, GitCompareIcon, BellIcon, TagIcon, ShareIcon, StethoscopeIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
@@ -15,10 +15,14 @@ import { OverviewTab } from "@/components/secret-detail/tabs/OverviewTab";
 import { DataTab } from "@/components/secret-detail/tabs/DataTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Data", icon: DatabaseIcon },
   { id: "Changes", icon: GitCompareIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -29,6 +33,7 @@ const TABS = [
 export default function SecretDetailPage() {
   const { namespace, name } = useParams();
   const { data, loading, error, refresh } = useK8sDetail("secret", namespace, name);
+  const diagCount = data ? diagnoseResource("secret", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const secret = data?.secret ?? null;
@@ -84,6 +89,7 @@ export default function SecretDetailPage() {
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
                     </button>
                   );
@@ -97,6 +103,15 @@ export default function SecretDetailPage() {
       {secret && <Recommendations resourceType="secret" data={data} namespace={namespace} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="secret"
+          resourceLabel="Secret"
+          data={data}
+          uid={data?.secret?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="secret" data={data} showEmpty />}
         {activeTab === "Overview" && <OverviewTab secret={secret} namespace={namespace} />}
         {activeTab === "Data" && <DataTab secret={secret} />}
         {activeTab === "Changes" && <ChangesTab resourceType="secret" resource={secret} />}

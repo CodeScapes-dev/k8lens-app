@@ -226,6 +226,11 @@ export function SharedLogsTab({ pods = [], singlePod = false }) {
 
   React.useEffect(() => { React.startTransition(() => { fetchAll(); }); }, [fetchAll]);
   React.useEffect(() => {
+    const onRefreshNow = () => fetchAll();
+    window.addEventListener("kl:refresh-now", onRefreshNow);
+    return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
+  }, [fetchAll]);
+  React.useEffect(() => {
     if (!live) return;
     const id = setInterval(fetchAll, 4000);
     return () => clearInterval(id);

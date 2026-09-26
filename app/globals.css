@@ -200,3 +200,11 @@ html.dark {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Table density (Settings → Appearance). Comfortable keeps the shadcn defaults. */
+:root[data-density="compact"] [data-slot="table-cell"] {
+  padding-block: 0.125rem;
+}
+:root[data-density="compact"] [data-slot="table-head"] {
+  height: 1.75rem;
+}

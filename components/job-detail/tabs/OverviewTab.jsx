@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
-import { calculateAge, formatTimestamp } from "@/lib/k8s/utils";
+import { useTimeFormat } from "@/hooks/use-time-format";
+import { calculateAge } from "@/lib/k8s/utils";
 import { Panel } from "@/components/kl/Panel";
 import { KLBadge } from "@/components/kl/Badge";
 
@@ -16,6 +19,7 @@ export function statusColor(job) {
 }
 
 export function OverviewTab({ job, pods }) {
+  const t = useTimeFormat();
   if (!job) return null;
   const meta = job.metadata ?? {};
   const spec = job.spec ?? {};
@@ -40,8 +44,8 @@ export function OverviewTab({ job, pods }) {
               ["Created", meta.creationTimestamp ? calculateAge(meta.creationTimestamp) + " ago" : "—"],
               ["Parallelism", spec.parallelism ?? 1], ["Completions", spec.completions ?? 1],
               ["Backoff Limit", spec.backoffLimit ?? "—"],
-              ["Started", startTime ? formatTimestamp(startTime) : "—"],
-              ["Completed", completionTime ? formatTimestamp(completionTime) : "—"],
+              ["Started", startTime ? t.timestamp(startTime) : "—"],
+              ["Completed", completionTime ? t.timestamp(completionTime) : "—"],
               ["Duration", duration],
             ].map(([label, value]) => (
               <React.Fragment key={label}>

@@ -1,0 +1,352 @@
+# K8Lens demo resources — covers every nav.js category so the dashboard
+# has something to show in each section.
+#
+# Usage (Docker Desktop Kubernetes):
+#   kubectl apply -f k8s/demo-manifest.yaml
+#   kubectl delete -f k8s/demo-manifest.yaml   # to tear down
+#
+# Note: the Ingress below needs an ingress controller (e.g. ingress-nginx)
+# to actually route traffic. Without one it just sits there — still fine
+# for the dashboard to display.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8lens-demo
+  labels:
+    app.kubernetes.io/part-of: k8lens-demo
+
+---
+# ---------- Configuration ----------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: k8lens-demo
+data:
+  APP_ENV: "demo"
+  GREETING: "Hello from K8Lens"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-secret
+  namespace: k8lens-demo
+type: Opaque
+stringData:
+  DB_PASSWORD: "demo-password"
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: demo-quota
+  namespace: k8lens-demo
+spec:
+  hard:
+    pods: "20"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: demo-limits
+  namespace: k8lens-demo
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 200m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+
+---
+# ---------- Access Control ----------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-service-account
+  namespace: k8lens-demo
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: demo-pod-reader
+  namespace: k8lens-demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "configmaps"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: demo-pod-reader-binding
+  namespace: k8lens-demo
+subjects:
+  - kind: ServiceAccount
+    name: demo-service-account
+    namespace: k8lens-demo
+roleRef:
+  kind: Role
+  name: demo-pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: demo-node-viewer
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: demo-node-viewer-binding
+subjects:
+  - kind: ServiceAccount
+    name: demo-service-account
+    namespace: k8lens-demo
+roleRef:
+  kind: ClusterRole
+  name: demo-node-viewer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ---------- Storage ----------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo-pvc
+  namespace: k8lens-demo
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: hostpath
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# ---------- Workloads ----------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-web
+  namespace: k8lens-demo
+  labels:
+    app: demo-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-web
+  template:
+    metadata:
+      labels:
+        app: demo-web
+    spec:
+      serviceAccountName: demo-service-account
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: demo-config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-cache
+  namespace: k8lens-demo
+  labels:
+    app: demo-cache
+spec:
+  serviceName: demo-cache
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-cache
+  template:
+    metadata:
+      labels:
+        app: demo-cache
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: hostpath
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: demo-node-agent
+  namespace: k8lens-demo
+  labels:
+    app: demo-node-agent
+spec:
+  selector:
+    matchLabels:
+      app: demo-node-agent
+  template:
+    metadata:
+      labels:
+        app: demo-node-agent
+    spec:
+      containers:
+        - name: agent
+          image: busybox:1.36
+          command: ["sh", "-c", "while true; do echo alive; sleep 30; done"]
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-job
+  namespace: k8lens-demo
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: hello
+          image: busybox:1.36
+          command: ["echo", "Hello from a K8Lens demo Job"]
+  backoffLimit: 2
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: demo-cronjob
+  namespace: k8lens-demo
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: hello
+              image: busybox:1.36
+              command: ["date"]
+
+---
+# ---------- Network ----------
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-web
+  namespace: k8lens-demo
+spec:
+  selector:
+    app: demo-web
+  ports:
+    - port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-cache
+  namespace: k8lens-demo
+spec:
+  clusterIP: None
+  selector:
+    app: demo-cache
+  ports:
+    - port: 6379
+      targetPort: 6379
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-ingress
+  namespace: k8lens-demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: k8lens-demo.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-web
+                port:
+                  number: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: demo-allow-same-namespace
+  namespace: k8lens-demo
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+
+---
+# ---------- Advanced ----------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demo-web-hpa
+  namespace: k8lens-demo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo-web
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
