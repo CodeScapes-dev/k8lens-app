@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, CpuIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, ScrollTextIcon } from "lucide-react";
+import { LayoutDashboardIcon, CpuIcon, ShieldAlertIcon, BellIcon, TagIcon, ShareIcon, ActivityIcon, ScrollTextIcon, StethoscopeIcon } from "lucide-react";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { calculateAge } from "@/lib/k8s/utils";
 import { SharedEventsTab } from "@/components/shared-detail-tabs/SharedEventsTab";
@@ -12,6 +12,9 @@ import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OverviewTab } from "@/components/statefulset-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/statefulset-detail/tabs/ResourcesTab";
@@ -21,6 +24,7 @@ import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Metrics",      icon: ActivityIcon },
   { id: "Resources",    icon: CpuIcon },
   { id: "Logs",         icon: ScrollTextIcon, live: true },
@@ -38,6 +42,7 @@ export default function StatefulSetDetailPage() {
   const ss = data?.statefulSet ?? null;
   const pods = data?.pods ?? [];
   const events = data?.events ?? [];
+  const diagCount = data ? diagnoseResource("statefulset", data).length : 0;
 
   const desired = ss?.spec?.replicas ?? 0;
   const ready = ss?.status?.readyReplicas ?? 0;
@@ -94,6 +99,7 @@ export default function StatefulSetDetailPage() {
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {live && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 inline-block" />}
                     </button>
                   );
@@ -106,8 +112,18 @@ export default function StatefulSetDetailPage() {
 
       {ss && <Recommendations resourceType="statefulset" data={data} namespace={namespace} name={name} />}
 
+      <DiagnosticsPrompt
+        resourceType="statefulset"
+        resourceLabel="StatefulSet"
+        data={data}
+        uid={ss?.metadata?.uid}
+        activeTab={activeTab}
+        onViewDiagnostics={() => setActiveTab("Diagnostics")}
+      />
+
       <div className="px-4 sm:px-7 py-5">
         {activeTab === "Overview"     && <OverviewTab sts={ss} pods={pods} events={events} />}
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="statefulset" data={data} showEmpty />}
         {activeTab === "Metrics"      && <WorkloadMetricsTab pods={pods} namespace={namespace} />}
         {activeTab === "Resources"    && <ResourcesTab containers={containers} sts={ss} />}
         {activeTab === "Logs"         && <SharedLogsTab pods={pods} />}

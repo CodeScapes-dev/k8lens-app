@@ -2,6 +2,53 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 
+// The core client returns core/v1 events (involvedObject); events.k8s.io events use regarding. Accept both.
+const isEventFor = (e, kind, name) => {
+  const target = e?.involvedObject ?? e?.regarding;
+  return target?.name === name && target?.kind === kind;
+};
+
+// Pod shape for cross-reference checks: enough to see what a pod refers to, without literal env values.
+const slimContainer = (c) => ({
+  name: c.name,
+  resources: c.resources,
+  envFrom: c.envFrom,
+  env: (c.env ?? []).map(({ name, valueFrom }) => ({ name, valueFrom })),
+});
+const slimPod = (pod) => ({
+  metadata: { name: pod?.metadata?.name, namespace: pod?.metadata?.namespace, labels: pod?.metadata?.labels },
+  status: { phase: pod?.status?.phase },
+  spec: {
+    serviceAccountName: pod?.spec?.serviceAccountName,
+    containers: (pod?.spec?.containers ?? []).map(slimContainer),
+    initContainers: (pod?.spec?.initContainers ?? []).map(slimContainer),
+    volumes: pod?.spec?.volumes,
+  },
+});
+
+const toIngressClassSummary = (c) => ({
+  name: c?.metadata?.name,
+  isDefault: c?.metadata?.annotations?.["ingressclass.kubernetes.io/is-default-class"] === "true",
+});
+
+const isUnscheduledPending = (pod) => pod?.status?.phase === "Pending" && !pod?.spec?.nodeName;
+
+// Node list is only needed to explain unschedulable pods; skip the cluster-wide call otherwise.
+// A rejected list (e.g. RBAC without cluster-scoped `nodes`) degrades to `nodesError` instead of failing the payload.
+async function fetchNodesIfPending(clients, pods) {
+  if (!pods.some(isUnscheduledPending)) return {};
+  const [nodesRes] = await Promise.allSettled([clients.core.listNode()]);
+  return nodesRes.status === "fulfilled" ? { nodes: extractItems(nodesRes.value) } : { nodesError: true };
+}
+
+function warningEventsForPods(events, pods) {
+  const names = new Set(pods.map((p) => p?.metadata?.name));
+  return events.filter((e) => {
+    const target = e?.involvedObject ?? e?.regarding;
+    return e?.type === "Warning" && target?.kind === "Pod" && names.has(target?.name);
+  });
+}
+
 const handlers = {
   pod: async (clients, { namespace, name }) => {
     const [podRes, eventsRes] = await Promise.allSettled([
@@ -11,7 +58,7 @@ const handlers = {
     const pod = podRes?.status === "fulfilled" ? extractBody(podRes.value) : null;
     if (!pod) throw new Error(`Pod ${namespace}/${name} not found`);
     const events = eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [];
-    return { pod, events };
+    return { pod, events, ...(await fetchNodesIfPending(clients, [pod])) };
   },
 
   deployment: async (clients, { namespace, name }) => {
@@ -31,10 +78,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "Deployment")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "Deployment", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { deployment, replicaSets, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { deployment, replicaSets, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   statefulset: async (clients, { namespace, name }) => {
@@ -49,10 +98,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "StatefulSet")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "StatefulSet", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { statefulSet, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { statefulSet, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   daemonset: async (clients, { namespace, name }) => {
@@ -67,10 +118,12 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "DaemonSet")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "DaemonSet", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { daemonSet, pods, events };
+    const podEvents = warningEventsForPods(allEvents, pods);
+    return { daemonSet, pods, events, podEvents, ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   replicaset: async (clients, { namespace, name }) => {
@@ -85,10 +138,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "ReplicaSet")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "ReplicaSet", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { replicaSet, pods, events };
+    return { replicaSet, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   replicationcontroller: async (clients, { namespace, name }) => {
@@ -103,10 +157,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "ReplicationController")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "ReplicationController", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { replicationController, pods, events };
+    return { replicationController, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   job: async (clients, { namespace, name }) => {
@@ -121,10 +176,11 @@ const handlers = {
       const l = pod?.metadata?.labels ?? {};
       return Object.entries(selector).every(([k, v]) => l[k] === v);
     });
-    const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "Job")
+    const allEvents = extractItems(eventsRes?.value);
+    const events = allEvents
+      .filter((e) => isEventFor(e, "Job", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
-    return { job, pods, events };
+    return { job, pods, events, podEvents: warningEventsForPods(allEvents, pods), ...(await fetchNodesIfPending(clients, pods)) };
   },
 
   cronjob: async (clients, { namespace, name }) => {
@@ -138,7 +194,7 @@ const handlers = {
       j?.metadata?.ownerReferences?.some((ref) => ref.kind === "CronJob" && ref.name === name),
     );
     const events = extractItems(eventsRes?.value)
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "CronJob")
+      .filter((e) => isEventFor(e, "CronJob", name))
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
     return { cronJob, jobs, events };
   },
@@ -195,27 +251,29 @@ const handlers = {
   },
 
   configmap: async (clients, { namespace, name }) => {
-    const [cmRes, eventsRes] = await Promise.allSettled([
+    const [cmRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedConfigMap({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const configMap = cmRes?.status === "fulfilled" ? extractBody(cmRes.value) : null;
     if (!configMap) throw new Error(`ConfigMap ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "ConfigMap");
-    return { configMap, events };
+    return { configMap, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   secret: async (clients, { namespace, name }) => {
-    const [secretRes, eventsRes] = await Promise.allSettled([
+    const [secretRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedSecret({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const secret = secretRes?.status === "fulfilled" ? extractBody(secretRes.value) : null;
     if (!secret) throw new Error(`Secret ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "Secret");
-    return { secret, events };
+    return { secret, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   resourcequota: async (clients, { namespace, name }) => {
@@ -231,15 +289,16 @@ const handlers = {
   },
 
   limitrange: async (clients, { namespace, name }) => {
-    const [lrRes, eventsRes] = await Promise.allSettled([
+    const [lrRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedLimitRange({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const limitRange = lrRes?.status === "fulfilled" ? extractBody(lrRes.value) : null;
     if (!limitRange) throw new Error(`LimitRange ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name);
-    return { limitRange, events };
+    return { limitRange, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   service: async (clients, { namespace, name }) => {
@@ -276,39 +335,72 @@ const handlers = {
   },
 
   ingress: async (clients, { namespace, name }) => {
-    const [ingressRes, eventsRes] = await Promise.allSettled([
+    const [ingressRes, eventsRes, servicesRes, classesRes] = await Promise.allSettled([
       clients.networking.readNamespacedIngress({ namespace, name }),
       clients.events.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedService({ namespace }),
+      clients.networking.listIngressClass(),
     ]);
     const ingress = ingressRes?.status === "fulfilled" ? extractBody(ingressRes.value) : null;
     if (!ingress) throw new Error(`Ingress ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "Ingress");
-    return { ingress, events };
+      .filter((e) => isEventFor(e, "Ingress", name));
+    // Existence only: TLS secret contents are never read into the response.
+    const tlsSecrets = {};
+    const tlsNames = [...new Set((ingress?.spec?.tls ?? []).map((t) => t?.secretName).filter(Boolean))];
+    await Promise.all(
+      tlsNames.map(async (secretName) => {
+        try {
+          await clients.core.readNamespacedSecret({ namespace, name: secretName });
+          tlsSecrets[secretName] = true;
+        } catch (err) {
+          tlsSecrets[secretName] = err?.code === 404 || err?.statusCode === 404 ? false : null;
+        }
+      }),
+    );
+    return {
+      ingress,
+      events,
+      tlsSecrets,
+      services: servicesRes?.status === "fulfilled"
+        ? extractItems(servicesRes.value).map((s) => ({ name: s?.metadata?.name, ports: (s?.spec?.ports ?? []).map((p) => ({ port: p.port, name: p.name })) }))
+        : undefined,
+      ingressClasses: classesRes?.status === "fulfilled" ? extractItems(classesRes.value).map(toIngressClassSummary) : undefined,
+    };
   },
 
   ingressclass: async (clients, { name }) => {
-    const [icRes, eventsRes] = await Promise.allSettled([
+    const [icRes, eventsRes, allClassesRes] = await Promise.allSettled([
       clients.networking.readIngressClass({ name }),
       clients.events.listEventForAllNamespaces(),
+      clients.networking.listIngressClass(),
     ]);
     const ingressClass = icRes?.status === "fulfilled" ? extractBody(icRes.value) : null;
     if (!ingressClass) throw new Error(`IngressClass ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "IngressClass");
-    return { ingressClass, events };
+      .filter((e) => isEventFor(e, "IngressClass", name));
+    return {
+      ingressClass,
+      events,
+      allClasses: allClassesRes?.status === "fulfilled" ? extractItems(allClassesRes.value).map(toIngressClassSummary) : undefined,
+    };
   },
 
   networkpolicy: async (clients, { namespace, name }) => {
-    const [npRes, eventsRes] = await Promise.allSettled([
+    const [npRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.networking.readNamespacedNetworkPolicy({ namespace, name }),
       clients.events.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const networkPolicy = npRes?.status === "fulfilled" ? extractBody(npRes.value) : null;
     if (!networkPolicy) throw new Error(`NetworkPolicy ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "NetworkPolicy");
-    return { networkPolicy, events };
+      .filter((e) => isEventFor(e, "NetworkPolicy", name));
+    return {
+      networkPolicy,
+      events,
+      pods: podsRes?.status === "fulfilled" ? extractItems(podsRes.value).map(slimPod) : undefined,
+    };
   },
 
   pv: async (clients, { name }) => {
@@ -334,10 +426,11 @@ const handlers = {
   },
 
   pvc: async (clients, { namespace, name }) => {
-    const [pvcRes, podsRes, eventsRes] = await Promise.allSettled([
+    const [pvcRes, podsRes, eventsRes, classesRes] = await Promise.allSettled([
       clients.core.readNamespacedPersistentVolumeClaim({ namespace, name }),
       clients.core.listNamespacedPod({ namespace }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.storage.listStorageClass(),
     ]);
     const pvc = pvcRes?.status === "fulfilled" ? extractBody(pvcRes.value) : null;
     if (!pvc) throw new Error(`PVC ${namespace}/${name} not found`);
@@ -347,7 +440,15 @@ const handlers = {
     );
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.uid === pvcUID);
-    return { pvc, pods, events };
+    const storageClasses = classesRes?.status === "fulfilled"
+      ? extractItems(classesRes.value).map((c) => ({
+          name: c?.metadata?.name,
+          provisioner: c?.provisioner,
+          volumeBindingMode: c?.volumeBindingMode,
+          isDefault: c?.metadata?.annotations?.["storageclass.kubernetes.io/is-default-class"] === "true",
+        }))
+      : undefined;
+    return { pvc, pods, events, storageClasses };
   },
 
   storageclass: async (clients, { name }) => {
@@ -367,10 +468,13 @@ const handlers = {
     const pvcKeys = new Set(pvcs.map((pvc) => `${pvc.metadata?.namespace}/${pvc.metadata?.name}`));
     const allPods = extractItems(podsRes?.value);
     const workloadsMap = new Map();
+    const claimsInUse = new Set();
     allPods.forEach((pod) => {
       const usesPvc = (pod.spec?.volumes ?? []).some((vol) => {
         if (vol.persistentVolumeClaim?.claimName) {
-          return pvcKeys.has(`${pod.metadata?.namespace}/${vol.persistentVolumeClaim.claimName}`);
+          const claimKey = `${pod.metadata?.namespace}/${vol.persistentVolumeClaim.claimName}`;
+          if (pvcKeys.has(claimKey)) claimsInUse.add(claimKey);
+          return pvcKeys.has(claimKey);
         }
         return false;
       });
@@ -388,7 +492,7 @@ const handlers = {
         workloadsMap.set(key, { kind: "Pod", name: pod.metadata?.name, namespace: pod.metadata?.namespace, uid: pod.metadata?.uid, pods: [{ name: pod.metadata?.name, namespace: pod.metadata?.namespace, phase: pod.status?.phase, uid: pod.metadata?.uid }] });
       }
     });
-    return { storageClass, pvs, pvcs, events, workloads: Array.from(workloadsMap.values()) };
+    return { storageClass, pvs, pvcs, events, workloads: Array.from(workloadsMap.values()), claimsInUse: [...claimsInUse] };
   },
 
   role: async (clients, { namespace, name }) => {
@@ -401,7 +505,7 @@ const handlers = {
     if (!role) throw new Error(`Role ${namespace}/${name} not found`);
     const bindings = extractItems(bindingsRes?.value).filter((rb) => rb?.roleRef?.name === name && rb?.roleRef?.kind === "Role");
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "Role");
+      .filter((e) => isEventFor(e, "Role", name));
     const subjects = bindings.flatMap((binding) =>
       (binding?.subjects ?? []).map((s) => ({ kind: s?.kind, name: s?.name, namespace: s?.namespace ?? namespace, bindingName: binding?.metadata?.name, bindingType: "RoleBinding", createdAt: binding?.metadata?.creationTimestamp })),
     );
@@ -447,6 +551,7 @@ const handlers = {
     const roleBinding = rbRes?.status === "fulfilled" ? extractBody(rbRes.value) : null;
     if (!roleBinding) throw new Error(`RoleBinding ${namespace}/${name} not found`);
     let role = null;
+    let roleMissing = false;
     const roleRef = roleBinding?.roleRef;
     if (roleRef) {
       try {
@@ -455,11 +560,13 @@ const handlers = {
         } else {
           role = extractBody(await clients.rbac.readNamespacedRole({ namespace, name: roleRef.name }));
         }
-      } catch {}
+      } catch (err) {
+        roleMissing = err?.code === 404 || err?.statusCode === 404;
+      }
     }
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "RoleBinding");
-    return { roleBinding, role, events };
+      .filter((e) => isEventFor(e, "RoleBinding", name));
+    return { roleBinding, role, roleMissing, events };
   },
 
   clusterrole: async (clients, { name }) => {
@@ -470,7 +577,7 @@ const handlers = {
     const clusterRole = crRes?.status === "fulfilled" ? extractBody(crRes.value) : null;
     if (!clusterRole) throw new Error(`ClusterRole ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "ClusterRole");
+      .filter((e) => isEventFor(e, "ClusterRole", name));
     return { clusterRole, events };
   },
 
@@ -481,9 +588,18 @@ const handlers = {
     ]);
     const clusterRoleBinding = crbRes?.status === "fulfilled" ? extractBody(crbRes.value) : null;
     if (!clusterRoleBinding) throw new Error(`ClusterRoleBinding ${name} not found`);
+    let role = null;
+    let roleMissing = false;
+    if (clusterRoleBinding?.roleRef?.name) {
+      try {
+        role = extractBody(await clients.rbac.readClusterRole({ name: clusterRoleBinding.roleRef.name }));
+      } catch (err) {
+        roleMissing = err?.code === 404 || err?.statusCode === 404;
+      }
+    }
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "ClusterRoleBinding");
-    return { clusterRoleBinding, events };
+      .filter((e) => isEventFor(e, "ClusterRoleBinding", name));
+    return { clusterRoleBinding, role, roleMissing, events };
   },
 
   serviceaccount: async (clients, { namespace, name }) => {
@@ -504,7 +620,7 @@ const handlers = {
       .map((crb) => ({ ...crb, kind: "ClusterRoleBinding" }));
     const podsUsingServiceAccount = extractItems(podsRes?.value).filter((pod) => pod?.spec?.serviceAccountName === name);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "ServiceAccount");
+      .filter((e) => isEventFor(e, "ServiceAccount", name));
     const rbRoles = await Promise.all(roleBindings.map(async (rb) => {
       try {
         const res = rb?.roleRef?.kind === "ClusterRole"
@@ -542,7 +658,7 @@ const handlers = {
     const hpa = hpaRes?.status === "fulfilled" ? extractBody(hpaRes.value) : null;
     if (!hpa) throw new Error(`HPA ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "HorizontalPodAutoscaler");
+      .filter((e) => isEventFor(e, "HorizontalPodAutoscaler", name));
     return { hpa, events };
   },
 
@@ -554,7 +670,7 @@ const handlers = {
     const priorityClass = pcRes?.status === "fulfilled" ? extractBody(pcRes.value) : null;
     if (!priorityClass) throw new Error(`PriorityClass ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "PriorityClass");
+      .filter((e) => isEventFor(e, "PriorityClass", name));
     return { priorityClass, events };
   },
 
@@ -566,7 +682,7 @@ const handlers = {
     const csr = csrRes?.status === "fulfilled" ? extractBody(csrRes.value) : null;
     if (!csr) throw new Error(`CSR ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "CertificateSigningRequest");
+      .filter((e) => isEventFor(e, "CertificateSigningRequest", name));
     return { csr, events };
   },
 
@@ -578,7 +694,7 @@ const handlers = {
     const crd = crdRes?.status === "fulfilled" ? extractBody(crdRes.value) : null;
     if (!crd) throw new Error(`CRD ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
-      .filter((e) => e?.regarding?.name === name && e?.regarding?.kind === "CustomResourceDefinition");
+      .filter((e) => isEventFor(e, "CustomResourceDefinition", name));
     return { crd, events };
   },
 };

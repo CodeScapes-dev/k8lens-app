@@ -1,0 +1,364 @@
+{
+  "health": {
+    "healthy": {
+      "score": 100,
+      "signals": []
+    },
+    "crashLoopApp": {
+      "score": 30,
+      "signals": [
+        {
+          "label": "HighRestartCount",
+          "explanation": "Container has restarted 25 times — likely a crash loop",
+          "penalty": 30
+        },
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "oom": {
+      "score": 15,
+      "signals": [
+        {
+          "label": "ElevatedRestartCount",
+          "explanation": "Container has restarted 7 times",
+          "penalty": 15
+        },
+        {
+          "label": "OOMKilled",
+          "explanation": "Pod was killed due to memory limit being exceeded",
+          "penalty": 30
+        },
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "oomEventOnly": {
+      "score": 70,
+      "signals": [
+        {
+          "label": "OOMKilled",
+          "explanation": "Pod was killed due to memory limit being exceeded",
+          "penalty": 30
+        }
+      ]
+    },
+    "multiContainer": {
+      "score": 45,
+      "signals": [
+        {
+          "label": "ElevatedRestartCount",
+          "explanation": "Container has restarted 11 times",
+          "penalty": 15
+        },
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "configMissing": {
+      "score": 60,
+      "signals": [
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "initCrash": {
+      "score": 60,
+      "signals": [
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "cleanExit": {
+      "score": 60,
+      "signals": [
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "pendingOld": {
+      "score": 70,
+      "signals": [
+        {
+          "label": "StuckInPending",
+          "explanation": "Pod has been in Pending state for more than 5 minutes",
+          "penalty": 30
+        }
+      ]
+    },
+    "pendingYoung": {
+      "score": 100,
+      "signals": []
+    },
+    "failed": {
+      "score": 50,
+      "signals": [
+        {
+          "label": "PodFailed",
+          "explanation": "The pod ended in a failed state",
+          "penalty": 50
+        }
+      ]
+    },
+    "imagePull": {
+      "score": 30,
+      "signals": [
+        {
+          "label": "StuckInPending",
+          "explanation": "Pod has been in Pending state for more than 5 minutes",
+          "penalty": 30
+        },
+        {
+          "label": "ImagePullFailure",
+          "explanation": "The container image can't be downloaded",
+          "penalty": 40
+        }
+      ]
+    },
+    "startError": {
+      "score": 30,
+      "signals": [
+        {
+          "label": "StuckInPending",
+          "explanation": "Pod has been in Pending state for more than 5 minutes",
+          "penalty": 30
+        },
+        {
+          "label": "ContainerStartError",
+          "explanation": "A container can't be created, usually a configuration problem",
+          "penalty": 40
+        }
+      ]
+    },
+    "evicted": {
+      "score": 50,
+      "signals": [
+        {
+          "label": "Evicted",
+          "explanation": "The pod was evicted from its node",
+          "penalty": 50
+        }
+      ]
+    },
+    "failedExit": {
+      "score": 50,
+      "signals": [
+        {
+          "label": "PodFailed",
+          "explanation": "The pod ended in a failed state",
+          "penalty": 50
+        }
+      ]
+    },
+    "notReady": {
+      "score": 80,
+      "signals": [
+        {
+          "label": "NotReady",
+          "explanation": "A container is running but failing its readiness check",
+          "penalty": 20
+        }
+      ]
+    },
+    "oldFlapping": {
+      "score": 45,
+      "signals": [
+        {
+          "label": "ElevatedRestartCount",
+          "explanation": "Container has restarted 10 times",
+          "penalty": 15
+        },
+        {
+          "label": "CrashLoopBackOff",
+          "explanation": "A container keeps crashing and being restarted",
+          "penalty": 40
+        }
+      ]
+    },
+    "recovered": {
+      "score": 100,
+      "signals": []
+    }
+  },
+  "restarts": {
+    "totalRestarts": 65,
+    "crashLoopPods": [
+      {
+        "pod": "crash-app",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 25
+      },
+      {
+        "pod": "oom",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 7
+      },
+      {
+        "pod": "multi",
+        "namespace": "demo",
+        "container": "sidecar",
+        "restarts": 9
+      },
+      {
+        "pod": "config-missing",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 4
+      },
+      {
+        "pod": "exit-zero",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 3
+      },
+      {
+        "pod": "old-flapping",
+        "namespace": "demo",
+        "container": "app",
+        "restarts": 10
+      }
+    ]
+  },
+  "unhealthy": [
+    {
+      "kind": "Pod",
+      "name": "crash-app",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "oom",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "multi",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "config-missing",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "init-crash",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "exit-zero",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "failed",
+      "namespace": "demo",
+      "reason": "Failed",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "image-pull",
+      "namespace": "demo",
+      "reason": "ImagePullBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "start-config",
+      "namespace": "demo",
+      "reason": "CreateContainerConfigError",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "evicted",
+      "namespace": "demo",
+      "reason": "Evicted",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "failed-exit",
+      "namespace": "demo",
+      "reason": "Failed",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "old-flapping",
+      "namespace": "demo",
+      "reason": "CrashLoopBackOff",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "error"
+    },
+    {
+      "kind": "Pod",
+      "name": "pending-old",
+      "namespace": "demo",
+      "reason": "Pending",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "warning"
+    },
+    {
+      "kind": "Pod",
+      "name": "pending-young",
+      "namespace": "demo",
+      "reason": "Pending",
+      "age": "<now>",
+      "severity": "warning"
+    },
+    {
+      "kind": "Pod",
+      "name": "not-ready",
+      "namespace": "demo",
+      "reason": "NotReady",
+      "age": "2020-01-01T00:00:00Z",
+      "severity": "warning"
+    }
+  ]
+}

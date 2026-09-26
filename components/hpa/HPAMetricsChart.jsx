@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import {
   PieChart, Pie, Label,
   AreaChart, Area, CartesianGrid, XAxis, YAxis, ReferenceLine,
@@ -54,6 +55,7 @@ function DonutMetric({ title, current, target, color, trackColor }) {
 }
 
 function TrendChart({ title, dataKey, data, target, color, gradientId }) {
+  const t = useTimeFormat();
   return (
     <Panel title={title} subtitle="last 15 min">
       <ChartContainer config={{ [dataKey]: { label: `${dataKey} %`, color } }} className="h-[160px] w-full">
@@ -72,13 +74,13 @@ function TrendChart({ title, dataKey, data, target, color, gradientId }) {
             tickMargin={6}
             minTickGap={32}
             tick={{ fontSize: 10 }}
-            tickFormatter={(v) => new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            tickFormatter={(v) => t.clock(v)}
           />
           <YAxis tickLine={false} axisLine={false} tickMargin={4} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
           <ChartTooltip
             content={
               <ChartTooltipContent
-                labelFormatter={(v) => new Date(v).toLocaleTimeString()}
+                labelFormatter={(v) => t.time(v)}
                 formatter={(v) => `${Number(v).toFixed(1)}%`}
               />
             }

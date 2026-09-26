@@ -1,6 +1,6 @@
 "use client";
 
-import { useClusterStore } from "@/stores/clusterStore";
+import { useClusterStore, getBrowserTimezone } from "@/stores/clusterStore";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -70,6 +70,12 @@ function SettingRow({ label, description, tooltip, children }) {
 
 export function GeneralTab() {
   const { preferences, setPreference } = useClusterStore();
+  const browserTimezone = getBrowserTimezone();
+  const timezone = preferences.timezone ?? "UTC";
+  const timezoneOptions = [timezone, browserTimezone].reduce(
+    (opts, tz) => (opts.some((o) => o.value === tz) ? opts : [{ value: tz, label: `${tz} (browser)` }, ...opts]),
+    TIMEZONES,
+  );
   const { available: metricsAvailable, loading: metricsLoading } = useMetrics("/api/k8s/metrics/detect");
 
   return (
@@ -121,12 +127,29 @@ export function GeneralTab() {
         {/* Timezone */}
         <SettingRow
           label="Timezone"
-          description="All timestamps will be converted to this timezone."
-          tooltip="Kubernetes stores times in UTC. This setting converts displayed timestamps to your local or preferred timezone."
+          description={
+            preferences.timezoneAuto ? (
+              `Detected from your browser: ${browserTimezone}.`
+            ) : timezone !== browserTimezone ? (
+              <>
+                All timestamps will be converted to this timezone.{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-foreground cursor-pointer"
+                  onClick={() => setPreference({ timezone: browserTimezone, timezoneAuto: true })}
+                >
+                  Use browser timezone ({browserTimezone})
+                </button>
+              </>
+            ) : (
+              "All timestamps will be converted to this timezone."
+            )
+          }
+          tooltip="Kubernetes stores times in UTC. By default this follows your browser's timezone; pick another to override it."
         >
           <SettingSelect
-            options={TIMEZONES}
-            storeValue={preferences.timezone ?? "UTC"}
+            options={timezoneOptions}
+            storeValue={timezone}
             onChange={(v) => setPreference({ timezone: v })}
             placeholder="Select timezone"
             className="w-64"

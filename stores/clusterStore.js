@@ -3,6 +3,25 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+// Browsers still report some legacy IANA aliases (e.g. Chrome says Asia/Calcutta for India).
+const TIMEZONE_ALIASES = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Dacca": "Asia/Dhaka",
+  "Europe/Kiev": "Europe/Kyiv",
+};
+
+export function getBrowserTimezone() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    return TIMEZONE_ALIASES[tz] ?? tz;
+  } catch {
+    return "UTC";
+  }
+}
+
 const DEFAULT_PREFERENCES = {
   autoRefresh: 0,
   dateFormat: "relative",
@@ -14,7 +33,8 @@ const DEFAULT_PREFERENCES = {
   navStyle: "vertical",
   readOnly: false,
   theme: "system",
-  timezone: "UTC",
+  timezone: getBrowserTimezone(),
+  timezoneAuto: true,
 };
 
 function commitClusters(clusters) {
@@ -120,13 +140,29 @@ export const useClusterStore = create(
           };
         }),
 
-      setPreference: (patch) => set((state) => ({ preferences: { ...state.preferences, ...patch } })),
+      setPreference: (patch) =>
+        set((state) => ({
+          preferences: {
+            ...state.preferences,
+            ...patch,
+            // Picking a timezone by hand stops it following the browser; `timezoneAuto` in the patch wins.
+            ...("timezone" in patch && !("timezoneAuto" in patch) ? { timezoneAuto: false } : {}),
+          },
+        })),
 
       switchCluster: (contextName) => set({ activeContext: contextName }),
     }),
     {
       name: "K8Lens-clusters",
       skipHydration: true,
+      merge: (persisted, current) => {
+        const stored = persisted?.preferences ?? {};
+        const preferences = { ...current.preferences, ...stored };
+        // Older saves have no `timezoneAuto`; their "UTC" was just the old default, so treat it as unset.
+        preferences.timezoneAuto = stored.timezoneAuto ?? (stored.timezone === undefined || stored.timezone === "UTC");
+        if (preferences.timezoneAuto) preferences.timezone = getBrowserTimezone();
+        return { ...current, ...persisted, preferences };
+      },
       storage: createJSONStorage(() => localStorage),
     }
   )

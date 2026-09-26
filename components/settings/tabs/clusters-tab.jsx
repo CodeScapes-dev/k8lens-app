@@ -1,6 +1,7 @@
 "use client";
 
 import { useClusterStore } from "@/stores/clusterStore";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ import { ServerIcon, TrashIcon, PlusIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ClustersTab() {
+  const t = useTimeFormat();
   const { clusters, activeContext, removeCluster } = useClusterStore();
   const router = useRouter();
 
@@ -41,7 +43,7 @@ export function ClustersTab() {
           {clusters.map((cluster) => {
             const isActive = cluster.contextName === activeContext;
             const connectedAt = cluster.connectedAt
-              ? new Date(cluster.connectedAt).toLocaleString()
+              ? t.dateTime(cluster.connectedAt)
               : null;
 
             return (

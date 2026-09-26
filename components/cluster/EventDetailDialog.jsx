@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTimeFormat } from "@/hooks/use-time-format";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { KLStatus } from "@/components/kl/Status";
@@ -28,6 +29,7 @@ function Field({ label, value }) {
 }
 
 function EventContent({ event }) {
+  const t = useTimeFormat();
   const reason = event.reason ?? "—";
   const namespace = event.regarding?.namespace ?? event.involvedObject?.namespace ?? event.metadata?.namespace ?? "—";
   const object = `${event.regarding?.kind ?? event.involvedObject?.kind ?? ""}/${event.regarding?.name ?? event.involvedObject?.name ?? "—"}`;
@@ -45,10 +47,10 @@ function EventContent({ event }) {
           <Field label="Object" value={object} />
           <Field label="Reason" value={reason} />
           <Field label="Count" value={count} />
-          <Field label="Last Seen" value={lastSeen ? new Date(lastSeen).toLocaleString() : "—"} />
+          <Field label="Last Seen" value={lastSeen ? t.dateTime(lastSeen) : "—"} />
           <Field label="Time Ago" value={lastSeen ? calculateAge(lastSeen) + " ago" : "—"} />
           {firstSeen && firstSeen !== lastSeen && (
-            <Field label="First Seen" value={new Date(firstSeen).toLocaleString()} />
+            <Field label="First Seen" value={t.dateTime(firstSeen)} />
           )}
         </div>
       </div>
