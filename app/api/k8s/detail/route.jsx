@@ -548,6 +548,7 @@ const handlers = {
     const roleBinding = rbRes?.status === "fulfilled" ? extractBody(rbRes.value) : null;
     if (!roleBinding) throw new Error(`RoleBinding ${namespace}/${name} not found`);
     let role = null;
+    let roleMissing = false;
     const roleRef = roleBinding?.roleRef;
     if (roleRef) {
       try {
@@ -556,11 +557,13 @@ const handlers = {
         } else {
           role = extractBody(await clients.rbac.readNamespacedRole({ namespace, name: roleRef.name }));
         }
-      } catch {}
+      } catch (err) {
+        roleMissing = err?.code === 404 || err?.statusCode === 404;
+      }
     }
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "RoleBinding", name));
-    return { roleBinding, role, events };
+    return { roleBinding, role, roleMissing, events };
   },
 
   clusterrole: async (clients, { name }) => {
@@ -582,9 +585,18 @@ const handlers = {
     ]);
     const clusterRoleBinding = crbRes?.status === "fulfilled" ? extractBody(crbRes.value) : null;
     if (!clusterRoleBinding) throw new Error(`ClusterRoleBinding ${name} not found`);
+    let role = null;
+    let roleMissing = false;
+    if (clusterRoleBinding?.roleRef?.name) {
+      try {
+        role = extractBody(await clients.rbac.readClusterRole({ name: clusterRoleBinding.roleRef.name }));
+      } catch (err) {
+        roleMissing = err?.code === 404 || err?.statusCode === 404;
+      }
+    }
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "ClusterRoleBinding", name));
-    return { clusterRoleBinding, events };
+    return { clusterRoleBinding, role, roleMissing, events };
   },
 
   serviceaccount: async (clients, { namespace, name }) => {
