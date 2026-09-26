@@ -468,10 +468,13 @@ const handlers = {
     const pvcKeys = new Set(pvcs.map((pvc) => `${pvc.metadata?.namespace}/${pvc.metadata?.name}`));
     const allPods = extractItems(podsRes?.value);
     const workloadsMap = new Map();
+    const claimsInUse = new Set();
     allPods.forEach((pod) => {
       const usesPvc = (pod.spec?.volumes ?? []).some((vol) => {
         if (vol.persistentVolumeClaim?.claimName) {
-          return pvcKeys.has(`${pod.metadata?.namespace}/${vol.persistentVolumeClaim.claimName}`);
+          const claimKey = `${pod.metadata?.namespace}/${vol.persistentVolumeClaim.claimName}`;
+          if (pvcKeys.has(claimKey)) claimsInUse.add(claimKey);
+          return pvcKeys.has(claimKey);
         }
         return false;
       });
@@ -489,7 +492,7 @@ const handlers = {
         workloadsMap.set(key, { kind: "Pod", name: pod.metadata?.name, namespace: pod.metadata?.namespace, uid: pod.metadata?.uid, pods: [{ name: pod.metadata?.name, namespace: pod.metadata?.namespace, phase: pod.status?.phase, uid: pod.metadata?.uid }] });
       }
     });
-    return { storageClass, pvs, pvcs, events, workloads: Array.from(workloadsMap.values()) };
+    return { storageClass, pvs, pvcs, events, workloads: Array.from(workloadsMap.values()), claimsInUse: [...claimsInUse] };
   },
 
   role: async (clients, { namespace, name }) => {
