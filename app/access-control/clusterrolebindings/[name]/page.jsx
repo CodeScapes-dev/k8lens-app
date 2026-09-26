@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, UsersIcon, GridIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, UsersIcon, GridIcon, BellIcon, TagIcon, ShareIcon, StethoscopeIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
 import { Panel } from "@/components/kl/Panel";
@@ -14,11 +14,15 @@ import { PolicyRulesPanel } from "@/components/rbac-detail/tabs/PolicyRulesPanel
 import { SubjectsTab, subjectTone } from "@/components/rbac-detail/tabs/SubjectsTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Subjects", icon: UsersIcon },
   { id: "Permissions", icon: GridIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -29,6 +33,7 @@ const TABS = [
 export default function ClusterRoleBindingDetailPage() {
   const { name } = useParams();
   const { data, loading, error, refresh } = useK8sDetail("clusterrolebinding", null, name);
+  const diagCount = data ? diagnoseResource("clusterrolebinding", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const crb = data?.clusterRoleBinding ?? null;
@@ -81,6 +86,7 @@ export default function ClusterRoleBindingDetailPage() {
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Subjects" && subjects.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{subjects.length}</Badge>}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
                     </button>
@@ -92,6 +98,15 @@ export default function ClusterRoleBindingDetailPage() {
         )}
       </div>
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="clusterrolebinding"
+          resourceLabel="Cluster Role Binding"
+          data={data}
+          uid={data?.clusterRoleBinding?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="clusterrolebinding" data={data} showEmpty />}
         {activeTab === "Overview" && crb && (
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4 items-start">
             <div className="flex flex-col gap-4">

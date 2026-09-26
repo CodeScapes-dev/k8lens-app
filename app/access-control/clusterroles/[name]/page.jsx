@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
-import { LayoutDashboardIcon, GridIcon, UsersIcon, BellIcon, TagIcon, ShareIcon } from "lucide-react";
+import { LayoutDashboardIcon, GridIcon, UsersIcon, BellIcon, TagIcon, ShareIcon, StethoscopeIcon } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import Link from "next/link";
 import { useK8sDetail } from "@/hooks/use-k8s";
@@ -18,12 +18,16 @@ import { HealthBadge } from "@/components/health-score/HealthBadge";
 import { Recommendations } from "@/components/recommendations/Recommendations";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DESTRUCTIVE_VERBS = ["delete", "deletecollection", "patch", "update", "create"];
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Permissions", icon: GridIcon },
   { id: "Subjects", icon: UsersIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -38,6 +42,7 @@ function privilegeTone(level) {
 export default function ClusterRoleDetailPage() {
   const { name } = useParams();
   const { data, loading, error, refresh } = useK8sDetail("clusterrole", null, name);
+  const diagCount = data ? diagnoseResource("clusterrole", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const clusterRole = data?.clusterRole ?? null;
@@ -99,6 +104,7 @@ export default function ClusterRoleDetailPage() {
                   return (
                     <button key={id} onClick={() => setActiveTab(id)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "none", border: "none", borderBottom: active ? "2px solid var(--foreground)" : "2px solid transparent", fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "var(--foreground)" : "var(--muted-foreground)", cursor: "pointer", marginBottom: -1, whiteSpace: "nowrap" }}>
                       <Icon size={13} />{id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Subjects" && subjects.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{subjects.length}</Badge>}
                       {id === "Events" && events.length > 0 && <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">{events.length}</Badge>}
                     </button>
@@ -113,6 +119,15 @@ export default function ClusterRoleDetailPage() {
       {clusterRole && <Recommendations resourceType="clusterrole" data={data} namespace={null} name={name} />}
 
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="clusterrole"
+          resourceLabel="Cluster Role"
+          data={data}
+          uid={data?.clusterRole?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="clusterrole" data={data} showEmpty />}
         {activeTab === "Overview" && clusterRole && (
           <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4 items-start">
             <div className="flex flex-col gap-4">
