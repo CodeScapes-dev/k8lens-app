@@ -426,10 +426,11 @@ const handlers = {
   },
 
   pvc: async (clients, { namespace, name }) => {
-    const [pvcRes, podsRes, eventsRes] = await Promise.allSettled([
+    const [pvcRes, podsRes, eventsRes, classesRes] = await Promise.allSettled([
       clients.core.readNamespacedPersistentVolumeClaim({ namespace, name }),
       clients.core.listNamespacedPod({ namespace }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.storage.listStorageClass(),
     ]);
     const pvc = pvcRes?.status === "fulfilled" ? extractBody(pvcRes.value) : null;
     if (!pvc) throw new Error(`PVC ${namespace}/${name} not found`);
@@ -439,7 +440,15 @@ const handlers = {
     );
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.uid === pvcUID);
-    return { pvc, pods, events };
+    const storageClasses = classesRes?.status === "fulfilled"
+      ? extractItems(classesRes.value).map((c) => ({
+          name: c?.metadata?.name,
+          provisioner: c?.provisioner,
+          volumeBindingMode: c?.volumeBindingMode,
+          isDefault: c?.metadata?.annotations?.["storageclass.kubernetes.io/is-default-class"] === "true",
+        }))
+      : undefined;
+    return { pvc, pods, events, storageClasses };
   },
 
   storageclass: async (clients, { name }) => {
