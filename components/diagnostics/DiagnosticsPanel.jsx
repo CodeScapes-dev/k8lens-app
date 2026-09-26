@@ -92,7 +92,7 @@ function EmptyState() {
         <CircleCheckIcon size={28} style={{ color: "var(--kl-ok)" }} />
         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--kl-text)" }}>No issues detected</div>
         <div style={{ fontSize: 12.5, color: "var(--kl-text-muted)", maxWidth: 420, lineHeight: 1.5 }}>
-          We checked for crashing apps, memory problems, and pods that can&apos;t find a machine to run on, and found nothing wrong.
+          We checked this resource against the common problems and found nothing wrong.
         </div>
       </div>
     </Panel>
