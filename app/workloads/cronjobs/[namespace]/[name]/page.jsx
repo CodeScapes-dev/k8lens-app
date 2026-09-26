@@ -9,6 +9,7 @@ import {
   BellIcon,
   TagIcon,
   ShareIcon,
+  StethoscopeIcon,
 } from "lucide-react";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { useK8sDetail } from "@/hooks/use-k8s";
@@ -20,10 +21,14 @@ import { OverviewTab } from "@/components/cronjob-detail/tabs/OverviewTab";
 import { ResourcesTab } from "@/components/cronjob-detail/tabs/ResourcesTab";
 import { QuickStat } from "@/components/workload-detail/helpers";
 import { Badge } from "@/components/ui/badge";
+import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
+import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
+import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
+  { id: "Diagnostics", icon: StethoscopeIcon },
   { id: "Resources", icon: CpuIcon },
   { id: "Run History", icon: HistoryIcon },
   { id: "Dependencies", icon: ShareIcon },
@@ -38,6 +43,7 @@ export default function CronJobDetailPage() {
     namespace,
     name,
   );
+  const diagCount = data ? diagnoseResource("cronjob", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const cj = data?.cronJob ?? null;
@@ -169,6 +175,7 @@ export default function CronJobDetailPage() {
                     >
                       <Icon size={13} />
                       {id}
+                      {id === "Diagnostics" && diagCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 min-w-4 px-1 rounded-full">{diagCount}</Badge>}
                       {id === "Events" && events.length > 0 && (
                         <Badge className="text-[10px] h-4 min-w-4 px-1 rounded-full">
                           {events.length}
@@ -184,6 +191,15 @@ export default function CronJobDetailPage() {
       </div>
 
       <div className="px-4 sm:px-7 py-5">
+        <DiagnosticsPrompt
+          resourceType="cronjob"
+          resourceLabel="CronJob"
+          data={data}
+          uid={data?.cronJob?.metadata?.uid}
+          activeTab={activeTab}
+          onViewDiagnostics={() => setActiveTab("Diagnostics")}
+        />
+        {activeTab === "Diagnostics" && <DiagnosticsPanel resourceType="cronjob" data={data} showEmpty />}
         {activeTab === "Overview" && <OverviewTab cj={cj} />}
         {activeTab === "Resources" && <ResourcesTab containers={containers} />}
         {activeTab === "Run History" && <RunHistoryTab jobs={jobs} />}
