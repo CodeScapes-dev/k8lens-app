@@ -8,6 +8,24 @@ const isEventFor = (e, kind, name) => {
   return target?.name === name && target?.kind === kind;
 };
 
+// Pod shape for cross-reference checks: enough to see what a pod refers to, without literal env values.
+const slimContainer = (c) => ({
+  name: c.name,
+  resources: c.resources,
+  envFrom: c.envFrom,
+  env: (c.env ?? []).map(({ name, valueFrom }) => ({ name, valueFrom })),
+});
+const slimPod = (pod) => ({
+  metadata: { name: pod?.metadata?.name, namespace: pod?.metadata?.namespace, labels: pod?.metadata?.labels },
+  status: { phase: pod?.status?.phase },
+  spec: {
+    serviceAccountName: pod?.spec?.serviceAccountName,
+    containers: (pod?.spec?.containers ?? []).map(slimContainer),
+    initContainers: (pod?.spec?.initContainers ?? []).map(slimContainer),
+    volumes: pod?.spec?.volumes,
+  },
+});
+
 const isUnscheduledPending = (pod) => pod?.status?.phase === "Pending" && !pod?.spec?.nodeName;
 
 // Node list is only needed to explain unschedulable pods; skip the cluster-wide call otherwise.
@@ -228,27 +246,29 @@ const handlers = {
   },
 
   configmap: async (clients, { namespace, name }) => {
-    const [cmRes, eventsRes] = await Promise.allSettled([
+    const [cmRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedConfigMap({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const configMap = cmRes?.status === "fulfilled" ? extractBody(cmRes.value) : null;
     if (!configMap) throw new Error(`ConfigMap ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "ConfigMap");
-    return { configMap, events };
+    return { configMap, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   secret: async (clients, { namespace, name }) => {
-    const [secretRes, eventsRes] = await Promise.allSettled([
+    const [secretRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedSecret({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const secret = secretRes?.status === "fulfilled" ? extractBody(secretRes.value) : null;
     if (!secret) throw new Error(`Secret ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "Secret");
-    return { secret, events };
+    return { secret, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   resourcequota: async (clients, { namespace, name }) => {
@@ -264,15 +284,16 @@ const handlers = {
   },
 
   limitrange: async (clients, { namespace, name }) => {
-    const [lrRes, eventsRes] = await Promise.allSettled([
+    const [lrRes, eventsRes, podsRes] = await Promise.allSettled([
       clients.core.readNamespacedLimitRange({ namespace, name }),
       clients.core.listNamespacedEvent({ namespace }),
+      clients.core.listNamespacedPod({ namespace }),
     ]);
     const limitRange = lrRes?.status === "fulfilled" ? extractBody(lrRes.value) : null;
     if (!limitRange) throw new Error(`LimitRange ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name);
-    return { limitRange, events };
+    return { limitRange, events, pods: extractItems(podsRes?.value).map(slimPod) };
   },
 
   service: async (clients, { namespace, name }) => {
