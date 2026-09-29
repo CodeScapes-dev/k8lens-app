@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { extractK8sError, isolateContext, loadDefaultKubeConfig, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
+import { extractK8sError, isUnconfiguredStub, isolateContext, loadDefaultKubeConfig, serializeKubeConfig, validateConnection } from "@/lib/k8s/client";
 import { storeCluster } from "@/lib/k8s/cluster-store";
 
 export async function POST() {
@@ -17,6 +17,16 @@ export async function POST() {
   const contexts = kubeConfig.getContexts();
   if (!contexts || contexts.length === 0) {
     return NextResponse.json({ error: "No contexts found in default kubeconfig." }, { status: 400 });
+  }
+
+  if (isUnconfiguredStub(kubeConfig)) {
+    return NextResponse.json(
+      {
+        error:
+          "Auto-detect isn't available here — this environment has no kubeconfig, no KUBECONFIG variable, and no in-cluster service account token. If you're running K8Lens in a container, it never reads a kubeconfig from disk by design; use Upload or Token instead.",
+      },
+      { status: 404 }
+    );
   }
 
   const clusters = await Promise.all(

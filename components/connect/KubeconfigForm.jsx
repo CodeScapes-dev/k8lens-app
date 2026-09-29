@@ -61,7 +61,6 @@ export function KubeconfigForm({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".yaml,.yml,.json,.conf,.kubeconfig"
         className="sr-only"
         onChange={(event) => onFileSelect(event.target.files?.[0])}
       />
