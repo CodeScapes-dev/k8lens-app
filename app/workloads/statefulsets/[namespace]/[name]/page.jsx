@@ -21,6 +21,7 @@ import { ResourcesTab } from "@/components/statefulset-detail/tabs/ResourcesTab"
 import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
 import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
@@ -36,7 +37,7 @@ const TABS = [
 
 export default function StatefulSetDetailPage() {
   const { namespace, name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("statefulset", namespace, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("statefulset", namespace, name);
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const ss = data?.statefulSet ?? null;
@@ -60,6 +61,7 @@ export default function StatefulSetDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="statefulset" name={name} />
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (
           <div className="space-y-3 pb-4">

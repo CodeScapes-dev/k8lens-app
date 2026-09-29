@@ -26,6 +26,7 @@ import { BlastRadiusTab }    from "@/components/deployment-detail/tabs/BlastRadi
 import { EventsTab }         from "@/components/deployment-detail/tabs/EventsTab";
 import { MetadataTab }       from "@/components/deployment-detail/tabs/MetadataTab";
 import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview",        icon: LayoutDashboardIcon },
@@ -53,7 +54,7 @@ function statusColor(dep) {
 
 export default function DeploymentDetailPage() {
   const { namespace, name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("deployment", namespace, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("deployment", namespace, name);
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const deployment  = data?.deployment  ?? null;
@@ -86,6 +87,7 @@ export default function DeploymentDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="deployment" name={name} />
       {/* Sticky header */}
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (

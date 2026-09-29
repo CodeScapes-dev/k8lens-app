@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
+import { getCachedList } from "@/lib/k8s/watch-manager";
 
 const resourceMap = {
   namespaces: {
@@ -21,6 +22,9 @@ const resourceMap = {
   },
   pods: {
     scope: "namespaced",
+    // See lib/k8s/watch-manager.js — when a live watch is already running for this cluster's
+    // Pods, the list branch below reads its in-memory cache instead of calling the API.
+    cacheKind: "pods",
     listNamespaced: (c, ns) => c.core.listNamespacedPod({ namespace: ns }),
     listAll: (c) => c.core.listPodForAllNamespaces(),
     get: (c, ns, name) => c.core.readNamespacedPod({ namespace: ns, name }),
@@ -104,15 +108,19 @@ export async function GET(request) {
     if (name) {
       const res = await entry.get(clients, namespace, name);
       result = { item: extractBody(res) };
-    } else if (entry.scope === "cluster") {
-      const res = await entry.list(clients);
-      result = applyListPipeline(extractItems(res), params);
-    } else if (namespace) {
-      const res = await entry.listNamespaced(clients, namespace);
-      result = applyListPipeline(extractItems(res), params);
     } else {
-      const res = await entry.listAll(clients);
-      result = applyListPipeline(extractItems(res), params);
+      const cached = entry.cacheKind ? getCachedList(clients.connectionParams, entry.cacheKind) : null;
+      let items;
+      if (cached) {
+        items = namespace ? cached.items.filter((o) => o.metadata?.namespace === namespace) : cached.items;
+      } else if (entry.scope === "cluster") {
+        items = extractItems(await entry.list(clients));
+      } else if (namespace) {
+        items = extractItems(await entry.listNamespaced(clients, namespace));
+      } else {
+        items = extractItems(await entry.listAll(clients));
+      }
+      result = applyListPipeline(items, params);
     }
     return NextResponse.json(serializeK8sObjects(result));
   } catch (err) {

@@ -2,25 +2,30 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
+import { getCachedList } from "@/lib/k8s/watch-manager";
 
 const resourceMap = {
   storageclasses: {
     scope: "cluster",
+    cacheKind: "storageclasses",
     list: (c) => c.storage.listStorageClass(),
     get: (c, _ns, name) => c.storage.readStorageClass({ name }),
   },
   volumeattachments: {
     scope: "cluster",
+    cacheKind: "volumeattachments",
     list: (c) => c.storage.listVolumeAttachment(),
     get: (c, _ns, name) => c.storage.readVolumeAttachment({ name }),
   },
   csidrivers: {
     scope: "cluster",
+    cacheKind: "csidrivers",
     list: (c) => c.storage.listCSIDriver(),
     get: (c, _ns, name) => c.storage.readCSIDriver({ name }),
   },
   csinodes: {
     scope: "cluster",
+    cacheKind: "csinodes",
     list: (c) => c.storage.listCSINode(),
     get: (c, _ns, name) => c.storage.readCSINode({ name }),
   },
@@ -49,8 +54,9 @@ export async function GET(request) {
       const res = await entry.get(clients, null, name);
       result = { item: extractBody(res) };
     } else {
-      const res = await entry.list(clients);
-      result = applyListPipeline(extractItems(res), params);
+      const cached = entry.cacheKind ? getCachedList(clients.connectionParams, entry.cacheKind) : null;
+      const items = cached ? cached.items : extractItems(await entry.list(clients));
+      result = applyListPipeline(items, params);
     }
     return NextResponse.json(serializeK8sObjects(result));
   } catch (err) {

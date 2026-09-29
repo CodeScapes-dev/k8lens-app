@@ -24,6 +24,7 @@ import { MetadataTab } from "@/components/pod-detail/tabs/MetadataTab";
 import { DependencyGraph } from "@/components/dependency-graph/DependencyGraph";
 import { PodMetricsTab } from "@/components/pod-detail/tabs/MetricsTab";
 import { QuickStat } from "@/components/detail/helpers";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview",     icon: LayoutDashboardIcon },
@@ -58,7 +59,7 @@ function totalMem(pod) {
 
 export default function PodDetailPage() {
   const { namespace, name } = useParams();
-  const { data, loading } = useK8sDetail("pod", namespace, name);
+  const { data, loading, notFound } = useK8sDetail("pod", namespace, name);
 
   const [activeTab, setActiveTab] = React.useState("Overview");
 
@@ -74,6 +75,7 @@ export default function PodDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="pod" name={name} />
       {/* Sticky header */}
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (

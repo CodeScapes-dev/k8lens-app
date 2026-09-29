@@ -19,6 +19,7 @@ import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
 import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
@@ -32,7 +33,7 @@ const TABS = [
 
 export default function ClusterRoleBindingDetailPage() {
   const { name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("clusterrolebinding", null, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("clusterrolebinding", null, name);
   const diagCount = data ? diagnoseResource("clusterrolebinding", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
@@ -52,6 +53,7 @@ export default function ClusterRoleBindingDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="clusterrolebinding" name={name} />
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (
           <div className="space-y-3 pb-4">

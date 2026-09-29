@@ -18,6 +18,7 @@ import { ResourcesTab } from "@/components/replicaset-detail/tabs/ResourcesTab";
 import { QuickStat, replicaStatusColor } from "@/components/workload-detail/helpers";
 import { WorkloadMetricsTab } from "@/components/workload-detail/tabs/MetricsTab";
 import { SharedLogsTab } from "@/components/shared-detail-tabs/LogsTab";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
@@ -32,7 +33,7 @@ const TABS = [
 
 export default function ReplicaSetDetailPage() {
   const { namespace, name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("replicaset", namespace, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("replicaset", namespace, name);
   const diagCount = data ? diagnoseResource("replicaset", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
@@ -56,6 +57,7 @@ export default function ReplicaSetDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="replicaset" name={name} />
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (
           <div className="space-y-3 pb-4">

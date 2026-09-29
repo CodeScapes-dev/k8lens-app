@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
+import { getCachedList } from "@/lib/k8s/watch-manager";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -20,8 +21,9 @@ export async function GET(request) {
       const res = await clients.scheduling.readPriorityClass({ name });
       result = { item: extractBody(res) };
     } else {
-      const res = await clients.scheduling.listPriorityClass();
-      result = applyListPipeline(extractItems(res), params);
+      const cached = getCachedList(clients.connectionParams, "priorityclasses");
+      const items = cached ? cached.items : extractItems(await clients.scheduling.listPriorityClass());
+      result = applyListPipeline(items, params);
     }
     return NextResponse.json(serializeK8sObjects(result));
   } catch (err) {

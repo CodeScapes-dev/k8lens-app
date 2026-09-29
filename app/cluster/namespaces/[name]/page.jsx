@@ -15,6 +15,7 @@ import { DiagnosticsPanel } from "@/components/diagnostics/DiagnosticsPanel";
 import { DiagnosticsPrompt } from "@/components/diagnostics/DiagnosticsPrompt";
 import { diagnoseResource } from "@/lib/k8s/diagnostics";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
@@ -26,7 +27,7 @@ const TABS = [
 
 export default function NamespaceDetailPage() {
   const { name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("namespace", null, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("namespace", null, name);
   const diagCount = data ? diagnoseResource("namespace", data).length : 0;
   const [activeTab, setActiveTab] = React.useState("Overview");
 
@@ -57,6 +58,7 @@ export default function NamespaceDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="namespace" name={name} />
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (
           <div className="space-y-3 pb-4">

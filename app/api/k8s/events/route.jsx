@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
 import { serializeK8sObjects, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
+import { getCachedList } from "@/lib/k8s/watch-manager";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -15,13 +16,16 @@ export async function GET(request) {
   try {
     const clients = getClientsFromRequest(request);
     const params = parseListParams(request);
-    let res;
-    if (namespace) {
-      res = await clients.events.listNamespacedEvent({ namespace });
+    const cached = getCachedList(clients.connectionParams, "events");
+    let items;
+    if (cached) {
+      items = namespace ? cached.items.filter((o) => o.metadata?.namespace === namespace) : cached.items;
+    } else if (namespace) {
+      items = extractItems(await clients.events.listNamespacedEvent({ namespace }));
     } else {
-      res = await clients.events.listEventForAllNamespaces();
+      items = extractItems(await clients.events.listEventForAllNamespaces());
     }
-    return NextResponse.json(serializeK8sObjects(applyListPipeline(extractItems(res), params)));
+    return NextResponse.json(serializeK8sObjects(applyListPipeline(items, params)));
   } catch (err) {
     return NextResponse.json({ error: extractK8sError(err, "Failed to fetch events") }, { status: 500 });
   }

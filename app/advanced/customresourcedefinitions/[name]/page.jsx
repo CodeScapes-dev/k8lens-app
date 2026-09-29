@@ -14,6 +14,7 @@ import { ConditionsTab } from "@/components/crd-detail/tabs/ConditionsTab";
 import { QuickStat } from "@/components/detail/helpers";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResourceDeletedDialog } from "@/components/detail/ResourceDeletedDialog";
 
 const TABS = [
   { id: "Overview", icon: LayoutDashboardIcon },
@@ -25,7 +26,7 @@ const TABS = [
 
 export default function CRDDetailPage() {
   const { name } = useParams();
-  const { data, loading, error, refresh } = useK8sDetail("crd", null, name);
+  const { data, loading, notFound, error, refresh } = useK8sDetail("crd", null, name);
   const [activeTab, setActiveTab] = React.useState("Overview");
 
   const crd = data?.crd ?? null;
@@ -43,6 +44,7 @@ export default function CRDDetailPage() {
 
   return (
     <div>
+    <ResourceDeletedDialog open={notFound} type="crd" name={name} />
       <div className="sm:sticky sm:top-0 sm:z-10 bg-background border-b border-border px-4 sm:px-7 pt-4">
         {loading ? (
           <div className="space-y-3 pb-4">

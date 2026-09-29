@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { getClientsFromRequest } from "@/lib/k8s/client";
-import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
+import { serializeK8sObjects, extractBody, extractItems, extractK8sError, NotFoundError } from "@/lib/k8s/utils";
+import { getCachedObject } from "@/lib/k8s/watch-manager";
+
+// See lib/k8s/watch-manager.js — when a live watch is already running for this cluster's `kind`
+// and has this object cached, returns it straight from memory. Falls through to `liveFn()`
+// (the exact call each handler always made) otherwise, so behavior is byte-for-byte unchanged
+// whenever no watch has been opened for this kind yet — this only ever makes a read faster/fresher,
+// never changes what it returns. `namespace` is null/undefined for cluster-scoped kinds.
+async function readOne(connectionParams, kind, namespace, name, liveFn) {
+  const cached = getCachedObject(connectionParams, kind, namespace, name);
+  if (cached) return cached;
+  return extractBody(await liveFn());
+}
 
 // The core client returns core/v1 events (involvedObject); events.k8s.io events use regarding. Accept both.
 const isEventFor = (e, kind, name) => {
@@ -52,18 +64,17 @@ function warningEventsForPods(events, pods) {
 const handlers = {
   pod: async (clients, { namespace, name }) => {
     const [podRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNamespacedPod({ namespace, name }),
+      readOne(clients.connectionParams, "pods", namespace, name, () => clients.core.readNamespacedPod({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace, fieldSelector: `involvedObject.name=${name},involvedObject.kind=Pod` }),
     ]);
-    const pod = podRes?.status === "fulfilled" ? extractBody(podRes.value) : null;
-    if (!pod) throw new Error(`Pod ${namespace}/${name} not found`);
+    const pod = podRes?.status === "fulfilled" ? podRes.value : null;
+    if (!pod) throw new NotFoundError(`Pod ${namespace}/${name} not found`);
     const events = eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [];
     return { pod, events, ...(await fetchNodesIfPending(clients, [pod])) };
   },
 
   deployment: async (clients, { namespace, name }) => {
-    const deployRes = await clients.apps.readNamespacedDeployment({ namespace, name });
-    const deployment = extractBody(deployRes);
+    const deployment = await readOne(clients.connectionParams, "deployments", namespace, name, () => clients.apps.readNamespacedDeployment({ namespace, name }));
     const selector = deployment?.spec?.selector?.matchLabels ?? {};
     const [rsRes, podsRes, eventsRes] = await Promise.allSettled([
       clients.apps.listNamespacedReplicaSet({ namespace }),
@@ -87,8 +98,7 @@ const handlers = {
   },
 
   statefulset: async (clients, { namespace, name }) => {
-    const ssRes = await clients.apps.readNamespacedStatefulSet({ namespace, name });
-    const statefulSet = extractBody(ssRes);
+    const statefulSet = await readOne(clients.connectionParams, "statefulsets", namespace, name, () => clients.apps.readNamespacedStatefulSet({ namespace, name }));
     const selector = statefulSet?.spec?.selector?.matchLabels ?? {};
     const [podsRes, eventsRes] = await Promise.allSettled([
       clients.core.listNamespacedPod({ namespace }),
@@ -107,8 +117,7 @@ const handlers = {
   },
 
   daemonset: async (clients, { namespace, name }) => {
-    const dsRes = await clients.apps.readNamespacedDaemonSet({ namespace, name });
-    const daemonSet = extractBody(dsRes);
+    const daemonSet = await readOne(clients.connectionParams, "daemonsets", namespace, name, () => clients.apps.readNamespacedDaemonSet({ namespace, name }));
     const selector = daemonSet?.spec?.selector?.matchLabels ?? {};
     const [podsRes, eventsRes] = await Promise.allSettled([
       clients.core.listNamespacedPod({ namespace }),
@@ -127,8 +136,7 @@ const handlers = {
   },
 
   replicaset: async (clients, { namespace, name }) => {
-    const rsRes = await clients.apps.readNamespacedReplicaSet({ namespace, name });
-    const replicaSet = extractBody(rsRes);
+    const replicaSet = await readOne(clients.connectionParams, "replicasets", namespace, name, () => clients.apps.readNamespacedReplicaSet({ namespace, name }));
     const selector = replicaSet?.spec?.selector?.matchLabels ?? {};
     const [podsRes, eventsRes] = await Promise.allSettled([
       clients.core.listNamespacedPod({ namespace }),
@@ -146,8 +154,7 @@ const handlers = {
   },
 
   replicationcontroller: async (clients, { namespace, name }) => {
-    const rcRes = await clients.core.readNamespacedReplicationController({ namespace, name });
-    const replicationController = extractBody(rcRes);
+    const replicationController = await readOne(clients.connectionParams, "replicationcontrollers", namespace, name, () => clients.core.readNamespacedReplicationController({ namespace, name }));
     const selector = replicationController?.spec?.selector ?? {};
     const [podsRes, eventsRes] = await Promise.allSettled([
       clients.core.listNamespacedPod({ namespace }),
@@ -165,8 +172,7 @@ const handlers = {
   },
 
   job: async (clients, { namespace, name }) => {
-    const jobRes = await clients.batch.readNamespacedJob({ namespace, name });
-    const job = extractBody(jobRes);
+    const job = await readOne(clients.connectionParams, "jobs", namespace, name, () => clients.batch.readNamespacedJob({ namespace, name }));
     const selector = job?.spec?.selector?.matchLabels ?? {};
     const [podsRes, eventsRes] = await Promise.allSettled([
       clients.core.listNamespacedPod({ namespace }),
@@ -184,8 +190,7 @@ const handlers = {
   },
 
   cronjob: async (clients, { namespace, name }) => {
-    const cjRes = await clients.batch.readNamespacedCronJob({ namespace, name });
-    const cronJob = extractBody(cjRes);
+    const cronJob = await readOne(clients.connectionParams, "cronjobs", namespace, name, () => clients.batch.readNamespacedCronJob({ namespace, name }));
     const [jobsRes, eventsRes] = await Promise.allSettled([
       clients.batch.listNamespacedJob({ namespace }),
       clients.events.listNamespacedEvent({ namespace }),
@@ -201,12 +206,12 @@ const handlers = {
 
   node: async (clients, { name }) => {
     const [nodeRes, podsRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNode({ name }),
+      readOne(clients.connectionParams, "nodes", null, name, () => clients.core.readNode({ name })),
       clients.core.listPodForAllNamespaces({ fieldSelector: `spec.nodeName=${name}` }),
       clients.core.listEventForAllNamespaces({ fieldSelector: `involvedObject.name=${name},involvedObject.kind=Node` }),
     ]);
-    const node = nodeRes?.status === "fulfilled" ? extractBody(nodeRes.value) : null;
-    if (!node) throw new Error(`Node ${name} not found`);
+    const node = nodeRes?.status === "fulfilled" ? nodeRes.value : null;
+    if (!node) throw new NotFoundError(`Node ${name} not found`);
     const pods = podsRes?.status === "fulfilled" ? extractItems(podsRes.value) : [];
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .sort((a, b) => new Date(b?.metadata?.creationTimestamp) - new Date(a?.metadata?.creationTimestamp));
@@ -215,7 +220,7 @@ const handlers = {
 
   namespace: async (clients, { name }) => {
     const [nsRes, podsRes, quotasRes, limitsRes, deploymentsRes, servicesRes, configMapsRes, secretsRes, daemonSetsRes, statefulSetsRes, replicaSetsRes, jobsRes, cronJobsRes, ingressesRes] = await Promise.allSettled([
-      clients.core.readNamespace({ name }),
+      readOne(clients.connectionParams, "namespaces", null, name, () => clients.core.readNamespace({ name })),
       clients.core.listNamespacedPod({ namespace: name }),
       clients.core.listNamespacedResourceQuota({ namespace: name }),
       clients.core.listNamespacedLimitRange({ namespace: name }),
@@ -230,8 +235,8 @@ const handlers = {
       clients.batch.listNamespacedCronJob({ namespace: name }),
       clients.networking.listNamespacedIngress({ namespace: name }),
     ]);
-    const ns = nsRes?.status === "fulfilled" ? extractBody(nsRes.value) : null;
-    if (!ns) throw new Error(`Namespace ${name} not found`);
+    const ns = nsRes?.status === "fulfilled" ? nsRes.value : null;
+    if (!ns) throw new NotFoundError(`Namespace ${name} not found`);
     return {
       ns,
       pods: extractItems(podsRes?.value),
@@ -252,12 +257,12 @@ const handlers = {
 
   configmap: async (clients, { namespace, name }) => {
     const [cmRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.core.readNamespacedConfigMap({ namespace, name }),
+      readOne(clients.connectionParams, "configmaps", namespace, name, () => clients.core.readNamespacedConfigMap({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace }),
       clients.core.listNamespacedPod({ namespace }),
     ]);
-    const configMap = cmRes?.status === "fulfilled" ? extractBody(cmRes.value) : null;
-    if (!configMap) throw new Error(`ConfigMap ${namespace}/${name} not found`);
+    const configMap = cmRes?.status === "fulfilled" ? cmRes.value : null;
+    if (!configMap) throw new NotFoundError(`ConfigMap ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "ConfigMap");
     return { configMap, events, pods: extractItems(podsRes?.value).map(slimPod) };
@@ -265,12 +270,12 @@ const handlers = {
 
   secret: async (clients, { namespace, name }) => {
     const [secretRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.core.readNamespacedSecret({ namespace, name }),
+      readOne(clients.connectionParams, "secrets", namespace, name, () => clients.core.readNamespacedSecret({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace }),
       clients.core.listNamespacedPod({ namespace }),
     ]);
-    const secret = secretRes?.status === "fulfilled" ? extractBody(secretRes.value) : null;
-    if (!secret) throw new Error(`Secret ${namespace}/${name} not found`);
+    const secret = secretRes?.status === "fulfilled" ? secretRes.value : null;
+    if (!secret) throw new NotFoundError(`Secret ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name && e?.involvedObject?.kind === "Secret");
     return { secret, events, pods: extractItems(podsRes?.value).map(slimPod) };
@@ -278,11 +283,11 @@ const handlers = {
 
   resourcequota: async (clients, { namespace, name }) => {
     const [rqRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNamespacedResourceQuota({ namespace, name }),
+      readOne(clients.connectionParams, "resourcequotas", namespace, name, () => clients.core.readNamespacedResourceQuota({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace }),
     ]);
-    const resourceQuota = rqRes?.status === "fulfilled" ? extractBody(rqRes.value) : null;
-    if (!resourceQuota) throw new Error(`ResourceQuota ${namespace}/${name} not found`);
+    const resourceQuota = rqRes?.status === "fulfilled" ? rqRes.value : null;
+    if (!resourceQuota) throw new NotFoundError(`ResourceQuota ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name);
     return { resourceQuota, events };
@@ -290,12 +295,12 @@ const handlers = {
 
   limitrange: async (clients, { namespace, name }) => {
     const [lrRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.core.readNamespacedLimitRange({ namespace, name }),
+      readOne(clients.connectionParams, "limitranges", namespace, name, () => clients.core.readNamespacedLimitRange({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace }),
       clients.core.listNamespacedPod({ namespace }),
     ]);
-    const limitRange = lrRes?.status === "fulfilled" ? extractBody(lrRes.value) : null;
-    if (!limitRange) throw new Error(`LimitRange ${namespace}/${name} not found`);
+    const limitRange = lrRes?.status === "fulfilled" ? lrRes.value : null;
+    if (!limitRange) throw new NotFoundError(`LimitRange ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name);
     return { limitRange, events, pods: extractItems(podsRes?.value).map(slimPod) };
@@ -303,13 +308,13 @@ const handlers = {
 
   service: async (clients, { namespace, name }) => {
     const [svcRes, epRes, podsRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNamespacedService({ namespace, name }),
+      readOne(clients.connectionParams, "services", namespace, name, () => clients.core.readNamespacedService({ namespace, name })),
       clients.core.readNamespacedEndpoints({ namespace, name }),
       clients.core.listNamespacedPod({ namespace }),
       clients.core.listNamespacedEvent({ namespace }),
     ]);
-    const service = svcRes?.status === "fulfilled" ? extractBody(svcRes.value) : null;
-    if (!service) throw new Error(`Service ${namespace}/${name} not found`);
+    const service = svcRes?.status === "fulfilled" ? svcRes.value : null;
+    if (!service) throw new NotFoundError(`Service ${namespace}/${name} not found`);
     const endpoints = epRes?.status === "fulfilled" ? extractBody(epRes.value) : null;
     const selector = service?.spec?.selector ?? {};
     const podsUsingService = extractItems(podsRes?.value).filter((pod) => {
@@ -324,11 +329,11 @@ const handlers = {
 
   endpoints: async (clients, { namespace, name }) => {
     const [epRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNamespacedEndpoints({ namespace, name }),
+      readOne(clients.connectionParams, "endpoints", namespace, name, () => clients.core.readNamespacedEndpoints({ namespace, name })),
       clients.core.listNamespacedEvent({ namespace }),
     ]);
-    const endpoints = epRes?.status === "fulfilled" ? extractBody(epRes.value) : null;
-    if (!endpoints) throw new Error(`Endpoints ${namespace}/${name} not found`);
+    const endpoints = epRes?.status === "fulfilled" ? epRes.value : null;
+    if (!endpoints) throw new NotFoundError(`Endpoints ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.name === name);
     return { endpoints, events };
@@ -336,13 +341,13 @@ const handlers = {
 
   ingress: async (clients, { namespace, name }) => {
     const [ingressRes, eventsRes, servicesRes, classesRes] = await Promise.allSettled([
-      clients.networking.readNamespacedIngress({ namespace, name }),
+      readOne(clients.connectionParams, "ingresses", namespace, name, () => clients.networking.readNamespacedIngress({ namespace, name })),
       clients.events.listNamespacedEvent({ namespace }),
       clients.core.listNamespacedService({ namespace }),
       clients.networking.listIngressClass(),
     ]);
-    const ingress = ingressRes?.status === "fulfilled" ? extractBody(ingressRes.value) : null;
-    if (!ingress) throw new Error(`Ingress ${namespace}/${name} not found`);
+    const ingress = ingressRes?.status === "fulfilled" ? ingressRes.value : null;
+    if (!ingress) throw new NotFoundError(`Ingress ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "Ingress", name));
     // Existence only: TLS secret contents are never read into the response.
@@ -371,12 +376,12 @@ const handlers = {
 
   ingressclass: async (clients, { name }) => {
     const [icRes, eventsRes, allClassesRes] = await Promise.allSettled([
-      clients.networking.readIngressClass({ name }),
+      readOne(clients.connectionParams, "ingressclasses", null, name, () => clients.networking.readIngressClass({ name })),
       clients.events.listEventForAllNamespaces(),
       clients.networking.listIngressClass(),
     ]);
-    const ingressClass = icRes?.status === "fulfilled" ? extractBody(icRes.value) : null;
-    if (!ingressClass) throw new Error(`IngressClass ${name} not found`);
+    const ingressClass = icRes?.status === "fulfilled" ? icRes.value : null;
+    if (!ingressClass) throw new NotFoundError(`IngressClass ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "IngressClass", name));
     return {
@@ -388,12 +393,12 @@ const handlers = {
 
   networkpolicy: async (clients, { namespace, name }) => {
     const [npRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.networking.readNamespacedNetworkPolicy({ namespace, name }),
+      readOne(clients.connectionParams, "networkpolicies", namespace, name, () => clients.networking.readNamespacedNetworkPolicy({ namespace, name })),
       clients.events.listNamespacedEvent({ namespace }),
       clients.core.listNamespacedPod({ namespace }),
     ]);
-    const networkPolicy = npRes?.status === "fulfilled" ? extractBody(npRes.value) : null;
-    if (!networkPolicy) throw new Error(`NetworkPolicy ${namespace}/${name} not found`);
+    const networkPolicy = npRes?.status === "fulfilled" ? npRes.value : null;
+    if (!networkPolicy) throw new NotFoundError(`NetworkPolicy ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "NetworkPolicy", name));
     return {
@@ -405,12 +410,12 @@ const handlers = {
 
   pv: async (clients, { name }) => {
     const [pvRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.core.readPersistentVolume({ name }),
+      readOne(clients.connectionParams, "persistentvolumes", null, name, () => clients.core.readPersistentVolume({ name })),
       clients.core.listEventForAllNamespaces(),
       clients.core.listPodForAllNamespaces(),
     ]);
-    const pv = pvRes?.status === "fulfilled" ? extractBody(pvRes.value) : null;
-    if (!pv) throw new Error(`PersistentVolume ${name} not found`);
+    const pv = pvRes?.status === "fulfilled" ? pvRes.value : null;
+    if (!pv) throw new NotFoundError(`PersistentVolume ${name} not found`);
     const pvUID = pv?.metadata?.uid;
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => e?.involvedObject?.uid === pvUID);
@@ -427,13 +432,13 @@ const handlers = {
 
   pvc: async (clients, { namespace, name }) => {
     const [pvcRes, podsRes, eventsRes, classesRes] = await Promise.allSettled([
-      clients.core.readNamespacedPersistentVolumeClaim({ namespace, name }),
+      readOne(clients.connectionParams, "persistentvolumeclaims", namespace, name, () => clients.core.readNamespacedPersistentVolumeClaim({ namespace, name })),
       clients.core.listNamespacedPod({ namespace }),
       clients.core.listNamespacedEvent({ namespace }),
       clients.storage.listStorageClass(),
     ]);
-    const pvc = pvcRes?.status === "fulfilled" ? extractBody(pvcRes.value) : null;
-    if (!pvc) throw new Error(`PVC ${namespace}/${name} not found`);
+    const pvc = pvcRes?.status === "fulfilled" ? pvcRes.value : null;
+    if (!pvc) throw new NotFoundError(`PVC ${namespace}/${name} not found`);
     const pvcUID = pvc?.metadata?.uid;
     const pods = extractItems(podsRes?.value).filter((pod) =>
       pod?.spec?.volumes?.some((vol) => vol?.persistentVolumeClaim?.claimName === name),
@@ -453,14 +458,14 @@ const handlers = {
 
   storageclass: async (clients, { name }) => {
     const [scRes, pvsRes, pvcsRes, eventsRes, podsRes] = await Promise.allSettled([
-      clients.storage.readStorageClass({ name }),
+      readOne(clients.connectionParams, "storageclasses", null, name, () => clients.storage.readStorageClass({ name })),
       clients.core.listPersistentVolume(),
       clients.core.listPersistentVolumeClaimForAllNamespaces(),
       clients.core.listEventForAllNamespaces(),
       clients.core.listPodForAllNamespaces(),
     ]);
-    const storageClass = scRes?.status === "fulfilled" ? extractBody(scRes.value) : null;
-    if (!storageClass) throw new Error(`StorageClass ${name} not found`);
+    const storageClass = scRes?.status === "fulfilled" ? scRes.value : null;
+    if (!storageClass) throw new NotFoundError(`StorageClass ${name} not found`);
     const pvs = extractItems(pvsRes?.value).filter((pv) => pv?.spec?.storageClassName === name);
     const pvcs = extractItems(pvcsRes?.value).filter((pvc) => pvc?.spec?.storageClassName === name);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
@@ -497,12 +502,12 @@ const handlers = {
 
   role: async (clients, { namespace, name }) => {
     const [roleRes, bindingsRes, eventsRes] = await Promise.allSettled([
-      clients.rbac.readNamespacedRole({ namespace, name }),
+      readOne(clients.connectionParams, "roles", namespace, name, () => clients.rbac.readNamespacedRole({ namespace, name })),
       clients.rbac.listNamespacedRoleBinding({ namespace }),
       clients.events.listNamespacedEvent({ namespace }),
     ]);
-    const role = roleRes?.status === "fulfilled" ? extractBody(roleRes.value) : null;
-    if (!role) throw new Error(`Role ${namespace}/${name} not found`);
+    const role = roleRes?.status === "fulfilled" ? roleRes.value : null;
+    if (!role) throw new NotFoundError(`Role ${namespace}/${name} not found`);
     const bindings = extractItems(bindingsRes?.value).filter((rb) => rb?.roleRef?.name === name && rb?.roleRef?.kind === "Role");
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "Role", name));
@@ -545,11 +550,11 @@ const handlers = {
 
   rolebinding: async (clients, { namespace, name }) => {
     const [rbRes, eventsRes] = await Promise.allSettled([
-      clients.rbac.readNamespacedRoleBinding({ namespace, name }),
+      readOne(clients.connectionParams, "rolebindings", namespace, name, () => clients.rbac.readNamespacedRoleBinding({ namespace, name })),
       clients.events.listNamespacedEvent({ namespace }),
     ]);
-    const roleBinding = rbRes?.status === "fulfilled" ? extractBody(rbRes.value) : null;
-    if (!roleBinding) throw new Error(`RoleBinding ${namespace}/${name} not found`);
+    const roleBinding = rbRes?.status === "fulfilled" ? rbRes.value : null;
+    if (!roleBinding) throw new NotFoundError(`RoleBinding ${namespace}/${name} not found`);
     let role = null;
     let roleMissing = false;
     const roleRef = roleBinding?.roleRef;
@@ -571,11 +576,11 @@ const handlers = {
 
   clusterrole: async (clients, { name }) => {
     const [crRes, eventsRes] = await Promise.allSettled([
-      clients.rbac.readClusterRole({ name }),
+      readOne(clients.connectionParams, "clusterroles", null, name, () => clients.rbac.readClusterRole({ name })),
       clients.events.listEventForAllNamespaces(),
     ]);
-    const clusterRole = crRes?.status === "fulfilled" ? extractBody(crRes.value) : null;
-    if (!clusterRole) throw new Error(`ClusterRole ${name} not found`);
+    const clusterRole = crRes?.status === "fulfilled" ? crRes.value : null;
+    if (!clusterRole) throw new NotFoundError(`ClusterRole ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "ClusterRole", name));
     return { clusterRole, events };
@@ -583,11 +588,11 @@ const handlers = {
 
   clusterrolebinding: async (clients, { name }) => {
     const [crbRes, eventsRes] = await Promise.allSettled([
-      clients.rbac.readClusterRoleBinding({ name }),
+      readOne(clients.connectionParams, "clusterrolebindings", null, name, () => clients.rbac.readClusterRoleBinding({ name })),
       clients.events.listEventForAllNamespaces(),
     ]);
-    const clusterRoleBinding = crbRes?.status === "fulfilled" ? extractBody(crbRes.value) : null;
-    if (!clusterRoleBinding) throw new Error(`ClusterRoleBinding ${name} not found`);
+    const clusterRoleBinding = crbRes?.status === "fulfilled" ? crbRes.value : null;
+    if (!clusterRoleBinding) throw new NotFoundError(`ClusterRoleBinding ${name} not found`);
     let role = null;
     let roleMissing = false;
     if (clusterRoleBinding?.roleRef?.name) {
@@ -604,14 +609,14 @@ const handlers = {
 
   serviceaccount: async (clients, { namespace, name }) => {
     const [saRes, rbRes, crbRes, podsRes, eventsRes] = await Promise.allSettled([
-      clients.core.readNamespacedServiceAccount({ namespace, name }),
+      readOne(clients.connectionParams, "serviceaccounts", namespace, name, () => clients.core.readNamespacedServiceAccount({ namespace, name })),
       clients.rbac.listNamespacedRoleBinding({ namespace }),
       clients.rbac.listClusterRoleBinding(),
       clients.core.listNamespacedPod({ namespace }),
       clients.events.listNamespacedEvent({ namespace }),
     ]);
-    const serviceAccount = saRes?.status === "fulfilled" ? extractBody(saRes.value) : null;
-    if (!serviceAccount) throw new Error(`ServiceAccount ${namespace}/${name} not found`);
+    const serviceAccount = saRes?.status === "fulfilled" ? saRes.value : null;
+    if (!serviceAccount) throw new NotFoundError(`ServiceAccount ${namespace}/${name} not found`);
     const roleBindings = extractItems(rbRes?.value)
       .filter((rb) => rb?.subjects?.some((s) => s.kind === "ServiceAccount" && s.name === name && s.namespace === namespace))
       .map((rb) => ({ ...rb, kind: "RoleBinding" }));
@@ -652,11 +657,11 @@ const handlers = {
 
   hpa: async (clients, { namespace, name }) => {
     const [hpaRes, eventsRes] = await Promise.allSettled([
-      clients.autoscaling.readNamespacedHorizontalPodAutoscaler({ namespace, name }),
+      readOne(clients.connectionParams, "horizontalpodautoscalers", namespace, name, () => clients.autoscaling.readNamespacedHorizontalPodAutoscaler({ namespace, name })),
       clients.events.listNamespacedEvent({ namespace }),
     ]);
-    const hpa = hpaRes?.status === "fulfilled" ? extractBody(hpaRes.value) : null;
-    if (!hpa) throw new Error(`HPA ${namespace}/${name} not found`);
+    const hpa = hpaRes?.status === "fulfilled" ? hpaRes.value : null;
+    if (!hpa) throw new NotFoundError(`HPA ${namespace}/${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "HorizontalPodAutoscaler", name));
     return { hpa, events };
@@ -664,11 +669,11 @@ const handlers = {
 
   priorityclass: async (clients, { name }) => {
     const [pcRes, eventsRes] = await Promise.allSettled([
-      clients.scheduling.readPriorityClass({ name }),
+      readOne(clients.connectionParams, "priorityclasses", null, name, () => clients.scheduling.readPriorityClass({ name })),
       clients.events.listEventForAllNamespaces(),
     ]);
-    const priorityClass = pcRes?.status === "fulfilled" ? extractBody(pcRes.value) : null;
-    if (!priorityClass) throw new Error(`PriorityClass ${name} not found`);
+    const priorityClass = pcRes?.status === "fulfilled" ? pcRes.value : null;
+    if (!priorityClass) throw new NotFoundError(`PriorityClass ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "PriorityClass", name));
     return { priorityClass, events };
@@ -680,7 +685,7 @@ const handlers = {
       clients.events.listEventForAllNamespaces(),
     ]);
     const csr = csrRes?.status === "fulfilled" ? extractBody(csrRes.value) : null;
-    if (!csr) throw new Error(`CSR ${name} not found`);
+    if (!csr) throw new NotFoundError(`CSR ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "CertificateSigningRequest", name));
     return { csr, events };
@@ -688,11 +693,11 @@ const handlers = {
 
   crd: async (clients, { name }) => {
     const [crdRes, eventsRes] = await Promise.allSettled([
-      clients.extensions.readCustomResourceDefinition({ name }),
+      readOne(clients.connectionParams, "customresourcedefinitions", null, name, () => clients.extensions.readCustomResourceDefinition({ name })),
       clients.events.listEventForAllNamespaces(),
     ]);
-    const crd = crdRes?.status === "fulfilled" ? extractBody(crdRes.value) : null;
-    if (!crd) throw new Error(`CRD ${name} not found`);
+    const crd = crdRes?.status === "fulfilled" ? crdRes.value : null;
+    if (!crd) throw new NotFoundError(`CRD ${name} not found`);
     const events = (eventsRes?.status === "fulfilled" ? extractItems(eventsRes.value) : [])
       .filter((e) => isEventFor(e, "CustomResourceDefinition", name));
     return { crd, events };

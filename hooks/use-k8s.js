@@ -3,20 +3,11 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useClusterStore } from "@/stores/clusterStore";
+import { useK8sSubscription } from "@/hooks/use-k8s-subscription";
+import { clusterHeaders } from "@/hooks/cluster-headers";
+import { WATCH_KINDS, DETAIL_TYPE_TO_KIND } from "@/lib/k8s/watch-kinds";
 
-export function clusterHeaders(cluster) {
-  if (!cluster) return {};
-  return {
-    ...(cluster.server && { "x-cluster-server": cluster.server }),
-    ...(cluster.token && { "x-cluster-token": cluster.token }),
-    ...(cluster.caData && { "x-cluster-ca-data": cluster.caData }),
-    ...(cluster.certData && { "x-cluster-cert-data": cluster.certData }),
-    ...(cluster.keyData && { "x-cluster-key-data": cluster.keyData }),
-    ...(cluster.skipTLSVerify !== undefined && {
-      "x-cluster-skip-tls": String(cluster.skipTLSVerify),
-    }),
-  };
-}
+export { clusterHeaders };
 
 export function useK8sResource(apiGroup, resource, options = {}) {
   const router = useRouter();
@@ -88,11 +79,25 @@ export function useK8sResource(apiGroup, resource, options = {}) {
     React.startTransition(() => { fetchData(); });
   }, [fetchData]);
 
+  // Reset the fallback once the user navigates to a different resource/cluster, so a past RBAC
+  // failure on one kind doesn't permanently disable live updates for an unrelated one.
+  const isWatchable = WATCH_KINDS[resource]?.apiGroup === apiGroup;
+  const [degraded, setDegraded] = React.useState(false);
+  React.useEffect(() => { setDegraded(false); }, [apiGroup, resource, activeContext]);
+
+  useK8sSubscription(isWatchable ? resource : null, {
+    enabled: isWatchable && !degraded,
+    onChange: fetchData,
+    onDegraded: () => setDegraded(true),
+  });
+
   React.useEffect(() => {
     if (!autoRefresh) return;
+    // Live updates already cover this kind; polling on top would be redundant network/API load.
+    if (isWatchable && !degraded) return;
     const id = setInterval(fetchData, autoRefresh * 1000);
     return () => clearInterval(id);
-  }, [fetchData, autoRefresh]);
+  }, [fetchData, autoRefresh, isWatchable, degraded]);
 
   React.useEffect(() => {
     const onRefreshNow = () => fetchData();
@@ -112,6 +117,10 @@ export function useK8sDetail(type, namespace, name) {
   const [data, setData] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
+  // The object genuinely doesn't exist (already gone, or deleted while this page was open) —
+  // distinct from `error`, which is a fetch/API problem. Pages show a "this was deleted" dialog
+  // instead of freezing on stale data, since a 404 here means there is nothing left to refresh.
+  const [notFound, setNotFound] = React.useState(false);
   const hasLoaded = React.useRef(false);
 
   const fetchData = React.useCallback(async () => {
@@ -134,8 +143,15 @@ export function useK8sDetail(type, namespace, name) {
           router.replace('/connect');
           return;
         }
+        if (err?.code === 'NOT_FOUND') {
+          setNotFound(true);
+          setData(null);
+          hasLoaded.current = true;
+          return;
+        }
         throw new Error(err?.message ?? err ?? "Request failed");
       }
+      setNotFound(false);
       setData(json);
       hasLoaded.current = true;
       if (isBackground) window.dispatchEvent(new CustomEvent("kl:refreshed"));
@@ -149,23 +165,40 @@ export function useK8sDetail(type, namespace, name) {
 
   React.useEffect(() => {
     hasLoaded.current = false;
+    setNotFound(false);
   }, [activeContext, type, namespace, name]);
 
   React.useEffect(() => {
     React.startTransition(() => { fetchData(); });
   }, [fetchData]);
 
+  // Detail pages subscribe to the whole kind (there's no per-object watch), but only refetch when
+  // the change was to *this* object — otherwise every other pod's churn on a busy cluster would
+  // refetch every open pod detail page. Cluster-scoped objects have no namespace on either side.
+  const watchKind = DETAIL_TYPE_TO_KIND[type];
+  const isWatchable = Boolean(watchKind);
+  const [degraded, setDegraded] = React.useState(false);
+  React.useEffect(() => { setDegraded(false); }, [type, namespace, name, activeContext]);
+
+  useK8sSubscription(isWatchable ? watchKind : null, {
+    enabled: isWatchable && !degraded && !notFound,
+    filter: (obj) => (obj?.metadata?.namespace || null) === (namespace || null) && obj?.metadata?.name === name,
+    onChange: fetchData,
+    onDegraded: () => setDegraded(true),
+  });
+
   React.useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || notFound) return;
+    if (isWatchable && !degraded) return;
     const id = setInterval(fetchData, autoRefresh * 1000);
     return () => clearInterval(id);
-  }, [fetchData, autoRefresh]);
+  }, [fetchData, autoRefresh, isWatchable, degraded, notFound]);
 
   React.useEffect(() => {
-    const onRefreshNow = () => fetchData();
+    const onRefreshNow = () => { if (!notFound) fetchData(); };
     window.addEventListener("kl:refresh-now", onRefreshNow);
     return () => window.removeEventListener("kl:refresh-now", onRefreshNow);
-  }, [fetchData]);
+  }, [fetchData, notFound]);
 
-  return { data, loading, error, refresh: fetchData };
+  return { data, loading, error, notFound, refresh: fetchData };
 }
