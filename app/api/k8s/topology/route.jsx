@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getClientsFromRequest } from "@/lib/k8s/client";
+import { getRequestClients, withWatchHeaders } from "@/lib/k8s/watch/cached-clients";
 import { extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { buildTopologyGraph } from "@/lib/k8s/topology-transformer";
 
@@ -14,7 +14,7 @@ export async function GET(request) {
   }
 
   try {
-    const clients = getClientsFromRequest(request);
+    const clients = getRequestClients(request);
 
     const [
       nodesRes, podsRes, namespacesRes, servicesRes,
@@ -77,7 +77,7 @@ export async function GET(request) {
       namespaceFilter: namespace,
     });
 
-    return NextResponse.json(graph);
+    return withWatchHeaders(NextResponse.json(graph), clients);
   } catch (err) {
     return NextResponse.json(
       { error: extractK8sError(err, "Failed to build topology graph") },

@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useClusterStore } from "@/stores/clusterStore";
 import { clusterHeaders } from "@/hooks/use-k8s";
+import { useLiveUpdates, useWatchInfo } from "@/hooks/use-live-updates";
 import { calculateClusterHealthScore } from "@/lib/k8s/cluster-health-score";
 import { aggregatePodsByPhase, aggregateNodeHealth, aggregateWorkloadHealth, aggregateRecentEvents, aggregatePodRestarts, buildUnhealthyWorkloads } from "@/lib/k8s/dashboard-aggregations";
 import { calculateClusterCost, calculateNamespaceCosts } from "@/lib/k8s/cost-calculations";
@@ -20,17 +21,22 @@ export function useDashboardData() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState(null);
   const isFirstFetch = React.useRef(true);
+  const [watchInfo, updateWatchInfo] = useWatchInfo();
+  const cluster = clusters.find((c) => c.contextName === activeContext);
+  const headers = React.useMemo(() => clusterHeaders(cluster), [cluster]);
 
-  const fetchData = React.useCallback(async () => {
+  // mode "live" = a watched dependency changed: refetch silently from the server-side cache.
+  const fetchData = React.useCallback(async (mode = "auto") => {
     if (!activeContext) return;
+    const isLive = mode === "live";
     const isBackground = !isFirstFetch.current;
-    if (isBackground) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
+    if (!isLive) {
+      if (isBackground) setRefreshing(true);
+      else setLoading(true);
+    }
     try {
-      const cluster = clusters.find((c) => c.contextName === activeContext);
       const params = new URLSearchParams({ context: activeContext });
-      const res = await fetch(`/api/k8s/dashboard?${params}`, { headers: clusterHeaders(cluster) });
+      const res = await fetch(`/api/k8s/dashboard?${params}`, { headers });
       const json = await res.json();
       if (!res.ok) {
         const err = json.error;
@@ -42,16 +48,27 @@ export function useDashboardData() {
         throw new Error(err?.message ?? err ?? "Request failed");
       }
       setRaw(json);
+      setError(null);
+      updateWatchInfo(res);
       isFirstFetch.current = false;
-      if (isBackground) window.dispatchEvent(new CustomEvent("kl:refreshed"));
+      if (isBackground && !isLive) window.dispatchEvent(new CustomEvent("kl:refreshed"));
     } catch (err) {
-      setError(err.message);
+      if (!isLive) setError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeContext, clusters]);
+  }, [activeContext, headers]);
+
+  const liveRefetch = React.useCallback(() => fetchData("live"), [fetchData]);
+  const { live } = useLiveUpdates({
+    deps: watchInfo.deps,
+    refetch: liveRefetch,
+    headers,
+    enabled: watchInfo.source !== "rest",
+  });
+  const fullyLive = live && watchInfo.source === "watch";
 
   React.useEffect(() => {
     isFirstFetch.current = true;
@@ -62,10 +79,10 @@ export function useDashboardData() {
   }, [fetchData]);
 
   React.useEffect(() => {
-    if (!autoRefresh) return;
-    const id = setInterval(fetchData, autoRefresh * 1000);
+    if (!autoRefresh || fullyLive) return;
+    const id = setInterval(() => fetchData(), autoRefresh * 1000);
     return () => clearInterval(id);
-  }, [fetchData, autoRefresh]);
+  }, [fetchData, autoRefresh, fullyLive]);
 
   React.useEffect(() => {
     const onRefreshNow = () => fetchData();
@@ -106,5 +123,5 @@ export function useDashboardData() {
     };
   }, [raw]);
 
-  return { raw, aggregated, loading, refreshing, error, refresh: fetchData };
+  return { raw, aggregated, loading, refreshing, error, refresh: fetchData, live };
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getClientsFromRequest } from "@/lib/k8s/client";
+import { getRequestClients, withWatchHeaders } from "@/lib/k8s/watch/cached-clients";
 import { serializeK8sObjects, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
 
@@ -13,7 +13,7 @@ export async function GET(request) {
   }
 
   try {
-    const clients = getClientsFromRequest(request);
+    const clients = getRequestClients(request);
     const params = parseListParams(request);
     let res;
     if (namespace) {
@@ -21,7 +21,7 @@ export async function GET(request) {
     } else {
       res = await clients.events.listEventForAllNamespaces();
     }
-    return NextResponse.json(serializeK8sObjects(applyListPipeline(extractItems(res), params)));
+    return withWatchHeaders(NextResponse.json(serializeK8sObjects(applyListPipeline(extractItems(res), params))), clients);
   } catch (err) {
     return NextResponse.json({ error: extractK8sError(err, "Failed to fetch events") }, { status: 500 });
   }

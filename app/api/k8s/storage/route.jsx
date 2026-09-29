@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getClientsFromRequest } from "@/lib/k8s/client";
+import { getRequestClients, withWatchHeaders } from "@/lib/k8s/watch/cached-clients";
 import { serializeK8sObjects, extractBody, extractItems, extractK8sError } from "@/lib/k8s/utils";
 import { parseListParams, applyListPipeline } from "@/lib/k8s/list-pipeline";
 
@@ -42,7 +42,7 @@ export async function GET(request) {
   }
 
   try {
-    const clients = getClientsFromRequest(request);
+    const clients = getRequestClients(request);
     const params = parseListParams(request);
     let result;
     if (name) {
@@ -52,7 +52,7 @@ export async function GET(request) {
       const res = await entry.list(clients);
       result = applyListPipeline(extractItems(res), params);
     }
-    return NextResponse.json(serializeK8sObjects(result));
+    return withWatchHeaders(NextResponse.json(serializeK8sObjects(result)), clients);
   } catch (err) {
     return NextResponse.json({ error: extractK8sError(err, "Failed to fetch resource") }, { status: 500 });
   }

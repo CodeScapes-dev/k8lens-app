@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getClientsFromRequest } from "@/lib/k8s/client";
+import { getRequestClients, withWatchHeaders } from "@/lib/k8s/watch/cached-clients";
 import { serializeK8sObjects, extractItems, extractK8sError } from "@/lib/k8s/utils";
 
 export async function GET(request) {
@@ -11,7 +11,7 @@ export async function GET(request) {
   }
 
   try {
-    const clients = getClientsFromRequest(request);
+    const clients = getRequestClients(request);
 
     const [
       nodesRes, podsRes, namespacesRes, servicesRes, endpointsRes,
@@ -37,7 +37,7 @@ export async function GET(request) {
 
     const safe = (res) => (res.status === "fulfilled" ? extractItems(res.value) : []);
 
-    return NextResponse.json(serializeK8sObjects({
+    return withWatchHeaders(NextResponse.json(serializeK8sObjects({
       nodes: safe(nodesRes),
       pods: safe(podsRes),
       namespaces: safe(namespacesRes),
@@ -52,7 +52,7 @@ export async function GET(request) {
       jobs: safe(jobsRes),
       cronJobs: safe(cronJobsRes),
       ingresses: safe(ingressesRes),
-    }));
+    })), clients);
   } catch (err) {
     return NextResponse.json({ error: extractK8sError(err, "Failed to fetch dashboard data") }, { status: 500 });
   }
